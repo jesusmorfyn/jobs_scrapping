@@ -25,6 +25,7 @@ Antes de ejecutar los scripts, necesitas instalar las librerías de Python reque
     *   `pandas`: Para manejar los datos y guardarlos en formato CSV.
     *   `selenium`: Para controlar el navegador (necesario para Indeed).
     *   `requests`: Para realizar las peticiones HTTP (usado en el script de OCC).
+    *   `lxml`: ?.
 
 ## Descripción de los Scripts
 

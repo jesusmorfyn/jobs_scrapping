@@ -1,4 +1,4 @@
-job_id,title,company,salary,location,posted_date,link
+﻿job_id,title,company,salary,location,posted_date,link
 20282388,Senior DevOps Engineer,Perficient,Sueldo no mostrado por la empresa,Remoto/No especificado,Hace 3 días,https://www.occ.com.mx/empleo/oferta/20282388/
 20275720,AZURE,EAS CONSULTING SC,Sueldo no mostrado por la empresa,"Santa Fe Cuajimalpa,, Cuajimalpa de Morelos,, CDMX",Hace 1 día,https://www.occ.com.mx/empleo/oferta/20275720/
 20281736,DevOps Engineer,"Stefanini México, S.A....",Sueldo no mostrado por la empresa,CDMX,Hace 3 días,https://www.occ.com.mx/empleo/oferta/20281736/
@@ -34,3 +34,5 @@ job_id,title,company,salary,location,posted_date,link
 20254250,Consultor SAP FI Soporte (S/4HANA Cloud),AIT VANGUARDIA TECNOLÓ...,"$37,000 - $39,000 Mensual",Remoto/No especificado,Hace 1 sem,https://www.occ.com.mx/empleo/oferta/20254250/
 20227853,Administrador de Kubernetes,T-SYSTEMS MEXICO,Sueldo no mostrado por la empresa,CDMX,Hace 2 sem,https://www.occ.com.mx/empleo/oferta/20227853/
 20257694,Infrastructure Architect,"AZKA IT CONSULTING, SA...","$75,000 - $85,000 Mensual",CDMX,Hace 1 día,https://www.occ.com.mx/empleo/oferta/20257694/
+20287366,Ingeniero DevOps Sr - Azure,Empresa confidencial,Sueldo no mostrado por la empresa,CDMX,Hoy,https://www.occ.com.mx/empleo/oferta/20287366/
+20287184,Técnico de Virtualización LINUX - REMOTO,echBusiness Operacione...,"$30,000 - $34,000 Mensual",Remoto/No especificado,Hoy,https://www.occ.com.mx/empleo/oferta/20287184/

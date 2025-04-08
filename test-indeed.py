@@ -280,7 +280,7 @@ try:
 
                 # --- Obtener HTML y Parsear ---
                 page_html = driver.page_source
-                soup = BeautifulSoup(page_html, 'html.parser')
+                soup = BeautifulSoup(page_html, 'lxml')
 
                 # Buscar el contenedor específico y luego los LIs dentro
                 job_list_container_soup = soup.find('div', id='mosaic-provider-jobcards')
