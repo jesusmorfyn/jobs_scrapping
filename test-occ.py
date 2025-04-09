@@ -5,8 +5,10 @@ import math
 import re # Para extraer números
 import pandas as pd # Necesario para leer/escribir CSV
 import os # Para verificar si el archivo existe
+from datetime import datetime # NUEVO: Importar datetime
 
 # --- Configuración ---
+# ... (sin cambios)
 SEARCH_KEYWORDS = [
     "devops",
     "cloud",
@@ -32,13 +34,9 @@ HEADERS = {
 }
 
 # --- Filtros de Título ---
-# Lista de palabras clave de exclusión (el título NO DEBE contener ninguna)
-# Poner en minúsculas.
 EXCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
     "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos" # "azure"
 ]
-# Lista de palabras clave de inclusión (el título DEBE contener al menos una si la lista NO está vacía)
-# Poner en minúsculas. Dejar vacía [] para desactivar este filtro.
 INCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
     # Términos generales y roles
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
@@ -65,14 +63,13 @@ INCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
     "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
     "failover", "disaster recovery"
 ]
-
-
-# Eliminamos JOBS_PER_PAGE, se determinará dinámicamente
+# ... (resto de la configuración sin cambios)
 DELAY_BETWEEN_PAGES = 10
 RETRY_DELAY = 5
 REQUEST_TIMEOUT = 30
 
-# --- Funciones Auxiliares (parse_job_card y get_total_results sin cambios) ---
+# --- Funciones Auxiliares ---
+# get_total_results (sin cambios)
 def get_total_results(soup):
     """Intenta extraer el número total de resultados de la página."""
     try:
@@ -107,6 +104,7 @@ def get_total_results(soup):
         print(f"Error al intentar obtener el total de resultados: {e}")
         return 0
 
+# parse_job_card (sin cambios)
 def parse_job_card(card_soup):
     """Extrae la información de interés de un 'job card'."""
     job_data = {}
@@ -203,39 +201,44 @@ def parse_job_card(card_soup):
         print(f"  Tarjeta con ID (aprox): {card_id_debug}")
         return None
 
+
 # --- Script Principal ---
 
 # 1. Cargar datos existentes y IDs
 existing_df = pd.DataFrame()
 found_job_ids = set()
+# NUEVO: Definir columnas esperadas, incluyendo la nueva
+expected_columns = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
 
 if os.path.exists(OUTPUT_FILENAME):
     print(f"Cargando datos existentes desde '{OUTPUT_FILENAME}'...")
     try:
         existing_df = pd.read_csv(OUTPUT_FILENAME)
-        # Asegurar que la columna job_id exista y convertir a string, manejando NaN
+        # Asegurar que las columnas esperadas existan
+        for col in expected_columns:
+            if col not in existing_df.columns:
+                existing_df[col] = pd.NA # Añadirla si falta, con valor nulo de Pandas
+
+        # Cargar IDs existentes (asegurar que job_id es string)
         if 'job_id' in existing_df.columns:
             found_job_ids = set(existing_df['job_id'].dropna().astype(str).tolist())
             print(f"Se cargaron {len(found_job_ids)} IDs existentes.")
-        else:
-            print("Advertencia: El archivo CSV existente no tiene columna 'job_id'. No se cargarán IDs.")
-            existing_df['job_id'] = None # Añadir columna para consistencia si falta
+        else: # Esto no debería pasar si se añadió arriba, pero por seguridad
+            print("Advertencia: La columna 'job_id' sigue faltando después de intentar añadirla.")
 
     except pd.errors.EmptyDataError:
         print("El archivo CSV existente está vacío.")
-        # Asegurar que el DataFrame tiene la columna job_id aunque esté vacío
-        existing_df = pd.DataFrame(columns=['job_id']) # Define las columnas esperadas
+        existing_df = pd.DataFrame(columns=expected_columns) # Crear DF vacío con columnas
     except Exception as e:
         print(f"Error al leer el archivo CSV existente: {e}. Se procederá como si no existiera.")
-        existing_df = pd.DataFrame(columns=['job_id']) # Resetear por si hubo error parcial
+        existing_df = pd.DataFrame(columns=expected_columns) # Resetear con columnas
         found_job_ids = set()
 else:
     print(f"El archivo '{OUTPUT_FILENAME}' no existe. Se creará uno nuevo.")
-    existing_df = pd.DataFrame(columns=['job_id']) # Define columnas para archivo nuevo
+    existing_df = pd.DataFrame(columns=expected_columns) # Crear DF vacío con columnas
 
 
-new_jobs_list = [] # Lista para almacenar solo las NUEVAS ofertas encontradas en esta ejecución
-# NUEVO: Diccionario para rastrear títulos procesados
+new_jobs_list = []
 processed_titles_occ = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
 
 print("======= INICIANDO SCRAPING DE OFERTAS OCC =======")
@@ -247,21 +250,18 @@ for keyword in SEARCH_KEYWORDS:
     page = 1
     max_pages = 1
     actual_jobs_per_page = 0
-    # NUEVO: Contadores por keyword
     skipped_excluded_title_total = 0
     skipped_inclusion_fail_total = 0
 
     while True:
         separator = '&' if '?' in base_url else '?'
         current_url = f"{base_url}{separator}page={page}" if page > 1 else base_url
-
         print(f"\n--- Scraping página {page} {'de '+str(max_pages) if max_pages > 1 else ''} para '{keyword}' ---")
 
         try:
             response = requests.get(current_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
-
-            soup = BeautifulSoup(response.text, 'lxml') # Cambiado a lxml por posible mejor rendimiento
+            soup = BeautifulSoup(response.text, 'lxml')
             job_cards = soup.find_all('div', id=lambda x: x and x.startswith('jobcard-'))
             current_page_job_count = len(job_cards)
 
@@ -280,13 +280,12 @@ for keyword in SEARCH_KEYWORDS:
                     print(f"No se encontraron ofertas en la primera página para '{keyword}'. Saltando esta búsqueda.")
                     break
 
-            if not job_cards and page > 1: # Si no hay tarjetas y no es la primera página
+            if not job_cards and page > 1:
                  print(f"No se encontraron más ofertas en la página {page} para '{keyword}'.")
-                 break # Salir del while para esta keyword
+                 break
 
             found_on_page = 0
             skipped_duplicates = 0
-            # NUEVO: Contadores por página
             skipped_excluded_title_page = 0
             skipped_inclusion_fail_page = 0
 
@@ -298,20 +297,19 @@ for keyword in SEARCH_KEYWORDS:
                     job_title = job_info.get('title')
                     job_title_lower = job_title.lower() if job_title else ""
 
-                    # --- NUEVO: Filtro de Exclusión Explícita ---
+                    # Filtro de Exclusión
                     excluded = False
                     for exclude_word in EXCLUDE_TITLE_KEYWORDS:
                         if exclude_word in job_title_lower:
                             processed_titles_occ['excluded_explicit'].append(f"{job_title} (Excl: {exclude_word})")
                             excluded = True
                             skipped_excluded_title_page += 1
-                            break # Salir si encuentra una palabra de exclusión
-                    if excluded:
-                        continue # Saltar al siguiente 'card'
+                            break
+                    if excluded: continue
 
-                    # --- Filtro de Inclusión (ya existente, con registro) ---
+                    # Filtro de Inclusión
                     included = False
-                    if INCLUDE_TITLE_KEYWORDS: # Solo si la lista no está vacía
+                    if INCLUDE_TITLE_KEYWORDS:
                         for include_word in INCLUDE_TITLE_KEYWORDS:
                             if include_word in job_title_lower:
                                 included = True
@@ -319,34 +317,33 @@ for keyword in SEARCH_KEYWORDS:
                         if not included:
                             processed_titles_occ['excluded_implicit'].append(f"{job_title}")
                             skipped_inclusion_fail_page += 1
-                            continue # Saltar si no cumple inclusión
-                    else: # Si la lista de inclusión está vacía, todas las no excluidas se incluyen
+                            continue
+                    else:
                          included = True
 
-                    # --- Comprobación de duplicados y adición ---
-                    # Solo si no fue excluida y cumplió inclusión (o la lista estaba vacía)
-                    if included and job_id not in found_job_ids:
+                    # Deduplicación y Adición con Timestamp
+                    if included and job_id and job_id not in found_job_ids: # Asegurar que job_id no sea None
+                        # NUEVO: Obtener y añadir timestamp
+                        timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        job_info['timestamp_found'] = timestamp_str
+                        # --- Fin Nuevo ---
                         new_jobs_list.append(job_info)
                         found_job_ids.add(job_id)
                         found_on_page += 1
-                        processed_titles_occ['included'].append(job_title) # Registrar título incluido
-                    elif included: # No fue excluida, cumplió inclusión, pero ya existe
+                        processed_titles_occ['included'].append(job_title)
+                    elif included and job_id:
                         skipped_duplicates += 1
 
-                # Si parse_job_card devolvió None, se ignora
-
-            # --- MODIFICADO: Imprimir resumen de la página con nuevos contadores ---
             print(f"Se añadieron {found_on_page} ofertas nuevas.")
             if skipped_excluded_title_page > 0:
                 print(f"Se descartaron {skipped_excluded_title_page} por exclusión de título.")
-                skipped_excluded_title_total += skipped_excluded_title_page # Acumular
+                skipped_excluded_title_total += skipped_excluded_title_page
             if skipped_inclusion_fail_page > 0:
                  print(f"Se descartaron {skipped_inclusion_fail_page} por fallo de inclusión de título.")
-                 skipped_inclusion_fail_total += skipped_inclusion_fail_page # Acumular
+                 skipped_inclusion_fail_total += skipped_inclusion_fail_page
             if skipped_duplicates > 0:
                 print(f"Se omitieron {skipped_duplicates} ofertas ya existentes o previamente encontradas.")
 
-            # Condición de salida del while (paginación)
             if page >= max_pages:
                 print(f"\nSe alcanzó la última página estimada ({max_pages}) para la búsqueda '{keyword}'.")
                 break
@@ -355,7 +352,6 @@ for keyword in SEARCH_KEYWORDS:
             print(f"Esperando {DELAY_BETWEEN_PAGES} segundo(s)...")
             time.sleep(DELAY_BETWEEN_PAGES)
 
-        # Resto del manejo de excepciones igual que antes...
         except requests.exceptions.Timeout:
              print(f"Error: Timeout en la página {page} para '{keyword}'. Reintentando en {RETRY_DELAY} segundos...")
              time.sleep(RETRY_DELAY)
@@ -372,80 +368,67 @@ for keyword in SEARCH_KEYWORDS:
                  break
             time.sleep(2)
 
-    # --- NUEVO: Imprimir resumen total de la keyword (opcional) ---
     print(f"\nResumen para '{keyword}':")
     if skipped_excluded_title_total > 0: print(f"  Total descartados por exclusión: {skipped_excluded_title_total}")
     if skipped_inclusion_fail_total > 0: print(f"  Total descartados por inclusión: {skipped_inclusion_fail_total}")
 
-
 # --- 3. Combinar y Guardar Resultados ---
-print("\n======= PROCESANDO RESULTADOS FINALES OCC =======") # Mensaje actualizado
+print("\n======= PROCESANDO RESULTADOS FINALES OCC =======")
 
-# --- NUEVO: Reporte de Títulos Procesados para OCC ---
 print("\n--- Reporte de Títulos Procesados OCC ---")
 print(f"Total Incluidos: {len(processed_titles_occ['included'])}")
 print(f"Total Excluidos (por keyword explícita): {len(processed_titles_occ['excluded_explicit'])}")
 print(f"Total Excluidos (por fallo de inclusión): {len(processed_titles_occ.get('excluded_implicit', []))}")
 
-
 if new_jobs_list:
-    print(f"\nSe encontraron {len(new_jobs_list)} ofertas nuevas de OCC en total durante esta ejecución.") # Mensaje actualizado
+    print(f"\nSe encontraron {len(new_jobs_list)} ofertas nuevas de OCC en total durante esta ejecución.")
     new_df = pd.DataFrame(new_jobs_list)
-    # Asegurar que la columna job_id existe y es string en el nuevo DF
     if 'job_id' in new_df.columns:
         new_df['job_id'] = new_df['job_id'].astype(str)
     else:
-        print("Advertencia: El nuevo DataFrame no contiene la columna 'job_id'.")
+        print("Advertencia: El nuevo DataFrame OCC no contiene la columna 'job_id'.")
         new_df['job_id'] = pd.Series(dtype='str')
 
-
     if not existing_df.empty:
-        print(f"Combinando {len(new_jobs_list)} nuevos con {len(existing_df)} existentes de OCC.") # Mensaje actualizado
-        # Asegurar que ambos DFs tengan las mismas columnas antes de concatenar
-        all_cols = list(set(new_df.columns) | set(existing_df.columns))
-        # Reindexar ambos DFs para que tengan todas las columnas, rellenando con NaN si falta alguna
+        print(f"Combinando {len(new_jobs_list)} nuevos con {len(existing_df)} existentes de OCC.")
+        # Asegurar columnas consistentes antes de concatenar
+        all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(expected_columns)) # Asegura que todas las esperadas estén
         new_df = new_df.reindex(columns=all_cols)
         existing_df = existing_df.reindex(columns=all_cols)
-        # MODIFICADO: Poner los existentes primero, luego los nuevos, para que keep='first' mantenga los viejos en caso de ID duplicado
-        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True) # Existentes primero
     else:
-        print("No había datos existentes de OCC, guardando solo los nuevos.") # Mensaje actualizado
+        print("No había datos existentes de OCC, guardando solo los nuevos.")
         combined_df = new_df
 
-    # Deduplicación final basada en job_id (asegurándose que la columna existe)
     initial_rows = len(combined_df)
     if 'job_id' in combined_df.columns:
-        # Convertir a string ANTES de eliminar duplicados
-        combined_df['job_id'] = combined_df['job_id'].astype(str)
-        # Eliminar duplicados manteniendo la primera aparición (los existentes)
-        combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
-        final_rows = len(combined_df)
-        if initial_rows > final_rows:
-             print(f"Se eliminaron {initial_rows - final_rows} duplicados durante la combinación final de OCC.") # Mensaje actualizado
+         combined_df['job_id'] = combined_df['job_id'].astype(str)
+         combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True) # Mantener primera (existente)
+         final_rows = len(combined_df)
+         if initial_rows > final_rows:
+              print(f"Se eliminaron {initial_rows - final_rows} duplicados durante la combinación final de OCC.")
     else:
          print("Advertencia: No se pudo realizar la deduplicación final de OCC por falta de columna 'job_id'.")
 
-    # Guardar el CSV final
     try:
-        # Definir el orden deseado y asegurar que todas las columnas existen
-        columns_order = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'link']
+        # Orden de columnas actualizado
+        columns_order = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
+        # Asegurar que todas las columnas existan en el DF combinado final
         for col in columns_order:
             if col not in combined_df.columns:
-                combined_df[col] = pd.NA # Usar pd.NA para datos faltantes
+                combined_df[col] = pd.NA
+        combined_df = combined_df[columns_order] # Reordenar
 
-        # Reordenar y guardar
-        combined_df = combined_df[columns_order]
         combined_df.to_csv(OUTPUT_FILENAME, index=False, encoding='utf-8-sig')
-        print(f"\nDatos de OCC actualizados guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df)} ofertas en total).") # Mensaje actualizado
+        print(f"\nDatos de OCC actualizados guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df)} ofertas en total).")
     except Exception as e:
-        print(f"\nError al guardar el archivo CSV final de OCC: {e}") # Mensaje actualizado
+        print(f"\nError al guardar el archivo CSV final de OCC: {e}")
 
 elif not new_jobs_list and not existing_df.empty:
-    print("\nNo se encontraron ofertas nuevas de OCC en esta ejecución. El archivo existente no se modificará.") # Mensaje actualizado
+    print("\nNo se encontraron ofertas nuevas de OCC en esta ejecución. El archivo existente no se modificará.")
     count_existing = len(existing_df) if existing_df is not None else 0
     print(f"El archivo '{OUTPUT_FILENAME}' contiene {count_existing} ofertas.")
 else:
-    print("\nNo se encontraron ofertas nuevas de OCC y no existía archivo previo.") # Mensaje actualizado
-
+    print("\nNo se encontraron ofertas nuevas de OCC y no existía archivo previo.")
 
 print("\n======= FIN DEL SCRIPT =======")
