@@ -5,38 +5,37 @@ import math
 import re
 import pandas as pd
 import os
-from datetime import datetime, timedelta # Mantenemos timedelta
+from datetime import datetime
 
-# --- Configuración ---
+DELAY_BETWEEN_PAGES = 10
+RETRY_DELAY = 10
+REQUEST_TIMEOUT = 60
+
 SEARCH_KEYWORDS = [
     "devops",
     "cloud",
     "aws",
     "gcp",
-    "sre",
+    # "sre",
     "site-reliability-engineer",
     "mlops",
-    "infrastructure",
-    "automation",
-    "ci/cd",
-    "kubernetes",
-    "docker",
-    "terraform",
-    "ansible",
-    "platform-engineer"
+    # "infrastructure",
+    # "automation",
+    # "ci/cd",
+    # "kubernetes",
+    # "docker",
+    # "terraform",
+    # "ansible",
+    # "platform-engineer"
 ]
 BASE_URL_TEMPLATE = "https://www.occ.com.mx/empleos/de-{keyword}/tipo-home-office-remoto/?sort=2"
 OUTPUT_FILENAME = "occ_multi_keyword_remoto_jobs.csv"
+HEADERS = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-
-# --- Filtros de Título ---
-# ... (sin cambios) ...
 EXCLUDE_TITLE_KEYWORDS = [
-    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack"
+    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap"
 ]
+
 INCLUDE_TITLE_KEYWORDS = [
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
     "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "ingeniero de la nube", "nube",

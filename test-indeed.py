@@ -5,6 +5,51 @@ import pandas as pd
 import os
 from datetime import datetime
 
+DELAY_BETWEEN_PAGES = 10
+RETRY_DELAY = 10
+REQUEST_TIMEOUT = 60
+
+SEARCH_KEYWORDS = [
+    "devops",
+    "cloud",
+    "aws",
+    "gcp",
+    # "sre",
+    "site+reliability+engineer",
+    "mlops",
+    # "infrastructure",
+    # "automation",
+    # "ci/cd",
+    # "kubernetes",
+    # "docker",
+    # "terraform",
+    # "ansible",
+    # "platform engineer"
+]
+BASE_URL_TEMPLATE_INDEED = "https://mx.indeed.com/jobs?q={keyword}&l=Remote&sc=0kf%3Aattr%28DSQF7%29%3B&sort=date&start={start}"
+OUTPUT_FILENAME = "indeed_multi_keyword_remoto_jobs.csv"
+INDEED_PAGE_INCREMENT = 10
+
+EXCLUDE_TITLE_KEYWORDS = [
+    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap"
+]
+
+INCLUDE_TITLE_KEYWORDS = [
+    "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
+    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "ingeniero de la nube", "nube",
+    "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
+    "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native", "computación en la nube",
+    "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
+    "orquestación", "virtualización",
+    "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef", "openstack", "infrastructure as code", "iac",
+    "configuración como código",
+    "prometheus", "grafana", "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
+    "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad", "resilience", "resiliencia",
+    "devsecops", "seguridad en la nube", "dataops", "integración continua", "entrega continua",
+    "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
+    "failover", "disaster recovery"
+]
+
 # --- Selenium Imports ---
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -14,8 +59,8 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 # --- Funciones Selenium ---
-# setup_driver_remote y close_cookie_popup (sin cambios)
-def setup_driver_remote():
+# setup_driver y close_cookie_popup (sin cambios)
+def setup_driver():
     print("Conectando a la instancia de Chrome en modo depuración remota...")
     chrome_options = ChromeOptions()
     chrome_options.add_experimental_option("debuggerAddress", "localhost:9222")
@@ -40,46 +85,11 @@ def close_cookie_popup(driver, wait_short):
     except Exception as e:
         print(f"Error al intentar cerrar pop-up de cookies: {e}")
 
-# --- Configuración General ---
-DELAY_BETWEEN_PAGES = 10
-RETRY_DELAY = 10
-REQUEST_TIMEOUT = 60
-
-# --- Configuración Específica para INDEED ---
-SEARCH_KEYWORDS_INDEED = [
-    "devops", "cloud", "aws", "gcp", "sre", "site reliability engineer",
-    "mlops", "ci/cd", "kubernetes",
-]
-BASE_URL_TEMPLATE_INDEED = "https://mx.indeed.com/jobs?q={keyword}&l=Remote&sc=0kf%3Aattr%28DSQF7%29%3B&sort=date&start={start}"
-OUTPUT_FILENAME_INDEED = "indeed_multi_keyword_remoto_jobs.csv"
-INDEED_PAGE_INCREMENT = 10
-
-# --- Filtros de Título para INDEED ---
-# ... (sin cambios) ...
-EXCLUDE_TITLE_KEYWORDS = [
-    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack"
-]
-INCLUDE_TITLE_KEYWORDS = [
-    "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
-    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "ingeniero de la nube", "nube",
-    "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
-    "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native", "computación en la nube",
-    "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
-    "orquestación", "virtualización",
-    "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef", "openstack", "infrastructure as code", "iac",
-    "configuración como código",
-    "prometheus", "grafana", "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
-    "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad", "resilience", "resiliencia",
-    "devsecops", "seguridad en la nube", "dataops", "integración continua", "entrega continua",
-    "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
-    "failover", "disaster recovery"
-]
-
 # --- Funciones Auxiliares ---
 # ELIMINADAS: read_last_run_time y write_last_run_time
-# parse_indeed_job_card (sin cambios)
-# ... (código de parse_indeed_job_card idéntico al anterior) ...
-def parse_indeed_job_card(card_soup):
+# parse_job_card (sin cambios)
+# ... (código de parse_job_card idéntico al anterior) ...
+def parse_job_card(card_soup):
     """Extrae la información de interés de una tarjeta de trabajo de Indeed."""
     job_data = {}
     job_id = None
@@ -178,54 +188,54 @@ def parse_indeed_job_card(card_soup):
 # --- Script Principal ---
 
 # 1. Cargar datos existentes
-existing_df_indeed = pd.DataFrame()
-found_job_ids_indeed = set()
-expected_columns_indeed = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
-last_run_time_indeed = None # MODIFICADO: Inicializar
+existing_df = pd.DataFrame()
+found_job_ids = set()
+expected_columns = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
+last_run_time = None # MODIFICADO: Inicializar
 
-if os.path.exists(OUTPUT_FILENAME_INDEED):
-    print(f"Cargando datos existentes desde '{OUTPUT_FILENAME_INDEED}'...")
+if os.path.exists(OUTPUT_FILENAME):
+    print(f"Cargando datos existentes desde '{OUTPUT_FILENAME}'...")
     try:
-        existing_df_indeed = pd.read_csv(OUTPUT_FILENAME_INDEED)
-        for col in expected_columns_indeed:
-            if col not in existing_df_indeed.columns:
-                existing_df_indeed[col] = pd.NA
-        if 'job_id' in existing_df_indeed.columns:
-            existing_df_indeed['job_id'] = existing_df_indeed['job_id'].astype(str)
-            found_job_ids_indeed = set(existing_df_indeed['job_id'].dropna().tolist())
-            print(f"Se cargaron {len(found_job_ids_indeed)} IDs existentes de Indeed.")
+        existing_df = pd.read_csv(OUTPUT_FILENAME)
+        for col in expected_columns:
+            if col not in existing_df.columns:
+                existing_df[col] = pd.NA
+        if 'job_id' in existing_df.columns:
+            existing_df['job_id'] = existing_df['job_id'].astype(str)
+            found_job_ids = set(existing_df['job_id'].dropna().tolist())
+            print(f"Se cargaron {len(found_job_ids)} IDs existentes de Indeed.")
         else:
-            print(f"Advertencia: '{OUTPUT_FILENAME_INDEED}' no tiene columna 'job_id'.")
-            existing_df_indeed['job_id'] = pd.Series(dtype='str')
+            print(f"Advertencia: '{OUTPUT_FILENAME}' no tiene columna 'job_id'.")
+            existing_df['job_id'] = pd.Series(dtype='str')
 
         # --- NUEVO: Intentar obtener el último timestamp del CSV ---
-        if 'timestamp_found' in existing_df_indeed.columns and not existing_df_indeed['timestamp_found'].isnull().all():
+        if 'timestamp_found' in existing_df.columns and not existing_df['timestamp_found'].isnull().all():
             try:
-                valid_timestamps = pd.to_datetime(existing_df_indeed['timestamp_found'], errors='coerce').dropna()
+                valid_timestamps = pd.to_datetime(existing_df['timestamp_found'], errors='coerce').dropna()
                 if not valid_timestamps.empty:
-                    last_run_time_indeed = valid_timestamps.max()
-                    print(f"Último registro encontrado en CSV (Indeed): {last_run_time_indeed}")
+                    last_run_time = valid_timestamps.max()
+                    print(f"Último registro encontrado en CSV (Indeed): {last_run_time}")
             except Exception as e_ts:
                 print(f"Advertencia: Error al procesar timestamps del CSV (Indeed): {e_ts}")
-                last_run_time_indeed = None
+                last_run_time = None
         # --- Fin Nuevo ---
 
     except pd.errors.EmptyDataError:
-        print(f"El archivo '{OUTPUT_FILENAME_INDEED}' está vacío.")
-        existing_df_indeed = pd.DataFrame(columns=expected_columns_indeed)
+        print(f"El archivo '{OUTPUT_FILENAME}' está vacío.")
+        existing_df = pd.DataFrame(columns=expected_columns)
     except Exception as e:
-        print(f"Error al leer '{OUTPUT_FILENAME_INDEED}': {e}.")
-        existing_df_indeed = pd.DataFrame(columns=expected_columns_indeed)
-        found_job_ids_indeed = set()
+        print(f"Error al leer '{OUTPUT_FILENAME}': {e}.")
+        existing_df = pd.DataFrame(columns=expected_columns)
+        found_job_ids = set()
 else:
-    print(f"El archivo '{OUTPUT_FILENAME_INDEED}' no existe. Se creará uno nuevo.")
-    existing_df_indeed = pd.DataFrame(columns=expected_columns_indeed)
+    print(f"El archivo '{OUTPUT_FILENAME}' no existe. Se creará uno nuevo.")
+    existing_df = pd.DataFrame(columns=expected_columns)
 
 # --- Determinar parámetro fromage ---
 fromage_param = 14 # Default
 
-if last_run_time_indeed:
-    time_diff_indeed = datetime.now() - last_run_time_indeed
+if last_run_time:
+    time_diff_indeed = datetime.now() - last_run_time
     days_diff_indeed = time_diff_indeed.days
     print(f"Última ejecución de Indeed (según CSV) detectada hace {days_diff_indeed} días.")
     if days_diff_indeed <= 1: fromage_param = 1
@@ -237,11 +247,11 @@ else:
 
 print(f"Parámetro de búsqueda por tiempo establecido: fromage={fromage_param}")
 
-new_jobs_list_indeed = []
+new_jobs_list = []
 processed_titles_indeed = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
 
 # --- Inicializar Driver ---
-driver = setup_driver_remote()
+driver = setup_driver()
 wait_long = WebDriverWait(driver, REQUEST_TIMEOUT)
 wait_short = WebDriverWait(driver, 3) # Reducir espera corta para chequeo rápido
 
@@ -249,10 +259,10 @@ print("======= INICIANDO SCRAPING DE OFERTAS INDEED (CON SELENIUM) =======")
 
 # 2. Iniciar Scraping
 try:
-    for i, keyword in enumerate(SEARCH_KEYWORDS_INDEED):
+    for i, keyword in enumerate(SEARCH_KEYWORDS):
         # MODIFICADO: Añadir fromage a la URL base
         base_url_with_fromage = f"{BASE_URL_TEMPLATE_INDEED}&fromage={fromage_param}"
-        print(f"\n========== Procesando Búsqueda {i+1}/{len(SEARCH_KEYWORDS_INDEED)} para: '{keyword}' (fromage={fromage_param}) ==========")
+        print(f"\n========== Procesando Búsqueda {i+1}/{len(SEARCH_KEYWORDS)} para: '{keyword}' (fromage={fromage_param}) ==========")
         page = 1
         keep_paging = True
         skipped_excluded_title_total = 0
@@ -357,7 +367,7 @@ try:
                 skipped_inclusion_fail_page = 0
 
                 for card_li in job_cards_li:
-                    job_info = parse_indeed_job_card(card_li)
+                    job_info = parse_job_card(card_li)
                     if job_info:
                         job_id = job_info.get('job_id')
                         job_title = job_info.get('title', '')
@@ -388,11 +398,11 @@ try:
                             included = True
 
                         # Deduplicación y Adición con Timestamp
-                        if included and job_id and job_id not in found_job_ids_indeed:
+                        if included and job_id and job_id not in found_job_ids:
                             timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                             job_info['timestamp_found'] = timestamp_str
-                            new_jobs_list_indeed.append(job_info)
-                            found_job_ids_indeed.add(job_id)
+                            new_jobs_list.append(job_info)
+                            found_job_ids.add(job_id)
                             found_on_page += 1
                             processed_titles_indeed['included'].append(job_title)
                         elif included and job_id:
@@ -448,7 +458,7 @@ try:
         if skipped_inclusion_fail_total > 0: print(f"  Total descartados por inclusión: {skipped_inclusion_fail_total}")
 
         # --- NUEVO: Pausa entre keywords también para Indeed ---
-        if i < len(SEARCH_KEYWORDS_INDEED) - 1:
+        if i < len(SEARCH_KEYWORDS) - 1:
             print(f"\nEsperando {DELAY_BETWEEN_PAGES} segundos antes de la siguiente keyword...")
             time.sleep(DELAY_BETWEEN_PAGES) # Reutilizamos la constante definida en OCC o define una nueva
 
@@ -471,30 +481,30 @@ print(f"Total Excluidos (por keyword explícita): {len(processed_titles_indeed['
 print(f"Total Excluidos (por fallo de inclusión): {len(processed_titles_indeed.get('excluded_implicit', []))}")
 
 
-if new_jobs_list_indeed:
-    print(f"\nSe encontraron {len(new_jobs_list_indeed)} ofertas nuevas de Indeed en total durante esta ejecución.")
-    new_df_indeed = pd.DataFrame(new_jobs_list_indeed)
-    if 'job_id' in new_df_indeed.columns:
-        new_df_indeed['job_id'] = new_df_indeed['job_id'].astype(str)
+if new_jobs_list:
+    print(f"\nSe encontraron {len(new_jobs_list)} ofertas nuevas de Indeed en total durante esta ejecución.")
+    new_df = pd.DataFrame(new_jobs_list)
+    if 'job_id' in new_df.columns:
+        new_df['job_id'] = new_df['job_id'].astype(str)
     else:
         print("Advertencia: El nuevo DataFrame Indeed no contiene la columna 'job_id'.")
-        new_df_indeed['job_id'] = pd.Series(dtype='str')
+        new_df['job_id'] = pd.Series(dtype='str')
 
-    if not existing_df_indeed.empty:
-        print(f"Combinando {len(new_jobs_list_indeed)} nuevos con {len(existing_df_indeed)} existentes de Indeed.")
-        all_cols = list(set(new_df_indeed.columns) | set(existing_df_indeed.columns) | set(expected_columns_indeed))
-        new_df_indeed = new_df_indeed.reindex(columns=all_cols)
-        existing_df_indeed = existing_df_indeed.reindex(columns=all_cols)
-        combined_df_indeed = pd.concat([existing_df_indeed, new_df_indeed], ignore_index=True)
+    if not existing_df.empty:
+        print(f"Combinando {len(new_jobs_list)} nuevos con {len(existing_df)} existentes de Indeed.")
+        all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(expected_columns))
+        new_df = new_df.reindex(columns=all_cols)
+        existing_df = existing_df.reindex(columns=all_cols)
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
     else:
         print("No había datos existentes de Indeed, guardando solo los nuevos.")
-        combined_df_indeed = new_df_indeed
+        combined_df = new_df
 
-    initial_rows = len(combined_df_indeed)
-    if 'job_id' in combined_df_indeed.columns:
-        combined_df_indeed['job_id'] = combined_df_indeed['job_id'].astype(str)
-        combined_df_indeed.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
-        final_rows = len(combined_df_indeed)
+    initial_rows = len(combined_df)
+    if 'job_id' in combined_df.columns:
+        combined_df['job_id'] = combined_df['job_id'].astype(str)
+        combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
+        final_rows = len(combined_df)
         if initial_rows > final_rows:
              print(f"Se eliminaron {initial_rows - final_rows} duplicados durante la combinación final de Indeed.")
     else:
@@ -503,20 +513,20 @@ if new_jobs_list_indeed:
     try:
         columns_order = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
         for col in columns_order:
-            if col not in combined_df_indeed.columns:
-                combined_df_indeed[col] = pd.NA
-        combined_df_indeed = combined_df_indeed[columns_order]
+            if col not in combined_df.columns:
+                combined_df[col] = pd.NA
+        combined_df = combined_df[columns_order]
 
-        combined_df_indeed.to_csv(OUTPUT_FILENAME_INDEED, index=False, encoding='utf-8-sig')
-        print(f"\nDatos de Indeed actualizados guardados exitosamente en '{OUTPUT_FILENAME_INDEED}' ({len(combined_df_indeed)} ofertas en total).")
+        combined_df.to_csv(OUTPUT_FILENAME, index=False, encoding='utf-8-sig')
+        print(f"\nDatos de Indeed actualizados guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df)} ofertas en total).")
 
     except Exception as e:
         print(f"\nError al guardar el archivo CSV final de Indeed: {e}")
 
-elif not new_jobs_list_indeed and not existing_df_indeed.empty:
+elif not new_jobs_list and not existing_df.empty:
     print("\nNo se encontraron ofertas nuevas de Indeed en esta ejecución. El archivo existente no se modificará.")
-    count_existing = len(existing_df_indeed) if existing_df_indeed is not None else 0
-    print(f"El archivo '{OUTPUT_FILENAME_INDEED}' contiene {count_existing} ofertas.")
+    count_existing = len(existing_df) if existing_df is not None else 0
+    print(f"El archivo '{OUTPUT_FILENAME}' contiene {count_existing} ofertas.")
 else:
     print("\nNo se encontraron ofertas nuevas de Indeed y no existía archivo previo.")
 
