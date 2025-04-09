@@ -51,8 +51,9 @@ SEARCH_KEYWORDS = [
 
 # --- Filtros de Título (Comunes) ---
 EXCLUDE_TITLE_KEYWORDS = [
-    "software", "development", "data", ".net", "python", "quality", "security", "seguridad",
-    "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap", "hibrido"
+    "software", "development", "data", ".net", "python", "quality", "security", "seguridad", "developer"
+    "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap", "hibrido",
+    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida"
 ]
 INCLUDE_TITLE_KEYWORDS = [
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
