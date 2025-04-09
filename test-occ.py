@@ -2,13 +2,12 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import math
-import re # Para extraer números
-import pandas as pd # Necesario para leer/escribir CSV
-import os # Para verificar si el archivo existe
-from datetime import datetime # NUEVO: Importar datetime
+import re
+import pandas as pd
+import os
+from datetime import datetime, timedelta # Mantenemos timedelta
 
 # --- Configuración ---
-# ... (sin cambios)
 SEARCH_KEYWORDS = [
     "devops",
     "cloud",
@@ -26,50 +25,43 @@ SEARCH_KEYWORDS = [
     "ansible",
     "platform-engineer"
 ]
-BASE_URL_TEMPLATE = "https://www.occ.com.mx/empleos/de-{keyword}/tipo-home-office-remoto/?sort=2&tm=14"
-OUTPUT_FILENAME = "occ_multi_keyword_remoto_jobs.csv" # Nombre del archivo de salida/DB
+BASE_URL_TEMPLATE = "https://www.occ.com.mx/empleos/de-{keyword}/tipo-home-office-remoto/?sort=2"
+OUTPUT_FILENAME = "occ_multi_keyword_remoto_jobs.csv"
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
 # --- Filtros de Título ---
-EXCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
-    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos" # "azure"
+# ... (sin cambios) ...
+EXCLUDE_TITLE_KEYWORDS = [
+    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack"
 ]
-INCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
-    # Términos generales y roles
+INCLUDE_TITLE_KEYWORDS = [
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
     "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "ingeniero de la nube", "nube",
     "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
-
-    # Nubes públicas y conceptos de nube
     "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native", "computación en la nube",
-
-    # Contenedores, orquestación y virtualización
     "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
     "orquestación", "virtualización",
-
-    # Herramientas de automatización y configuración (IaC)
     "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef", "openstack", "infrastructure as code", "iac",
     "configuración como código",
-
-    # Monitorización, logging y observabilidad
     "prometheus", "grafana", "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
-
-    # Otros conceptos, herramientas y términos relacionados
     "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad", "resilience", "resiliencia",
     "devsecops", "seguridad en la nube", "dataops", "integración continua", "entrega continua",
     "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
     "failover", "disaster recovery"
 ]
-# ... (resto de la configuración sin cambios)
+
 DELAY_BETWEEN_PAGES = 10
-RETRY_DELAY = 5
-REQUEST_TIMEOUT = 30
+RETRY_DELAY = 10
+REQUEST_TIMEOUT = 60
 
 # --- Funciones Auxiliares ---
-# get_total_results (sin cambios)
+# ELIMINADAS: read_last_run_time y write_last_run_time
+
+# get_total_results y parse_job_card (sin cambios)
+# ... (código de get_total_results y parse_job_card idéntico al anterior) ...
 def get_total_results(soup):
     """Intenta extraer el número total de resultados de la página."""
     try:
@@ -104,7 +96,6 @@ def get_total_results(soup):
         print(f"Error al intentar obtener el total de resultados: {e}")
         return 0
 
-# parse_job_card (sin cambios)
 def parse_job_card(card_soup):
     """Extrae la información de interés de un 'job card'."""
     job_data = {}
@@ -201,42 +192,66 @@ def parse_job_card(card_soup):
         print(f"  Tarjeta con ID (aprox): {card_id_debug}")
         return None
 
-
 # --- Script Principal ---
 
 # 1. Cargar datos existentes y IDs
 existing_df = pd.DataFrame()
 found_job_ids = set()
-# NUEVO: Definir columnas esperadas, incluyendo la nueva
 expected_columns = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
+last_run_time = None # MODIFICADO: Inicializar last_run_time
 
 if os.path.exists(OUTPUT_FILENAME):
     print(f"Cargando datos existentes desde '{OUTPUT_FILENAME}'...")
     try:
         existing_df = pd.read_csv(OUTPUT_FILENAME)
-        # Asegurar que las columnas esperadas existan
         for col in expected_columns:
             if col not in existing_df.columns:
-                existing_df[col] = pd.NA # Añadirla si falta, con valor nulo de Pandas
-
-        # Cargar IDs existentes (asegurar que job_id es string)
+                existing_df[col] = pd.NA
         if 'job_id' in existing_df.columns:
             found_job_ids = set(existing_df['job_id'].dropna().astype(str).tolist())
             print(f"Se cargaron {len(found_job_ids)} IDs existentes.")
-        else: # Esto no debería pasar si se añadió arriba, pero por seguridad
-            print("Advertencia: La columna 'job_id' sigue faltando después de intentar añadirla.")
+        else:
+            print("Advertencia: El archivo CSV existente no tiene columna 'job_id'.")
+            existing_df['job_id'] = pd.Series(dtype='str')
+
+        # --- NUEVO: Intentar obtener el último timestamp del CSV ---
+        if 'timestamp_found' in existing_df.columns and not existing_df['timestamp_found'].isnull().all():
+            try:
+                # Convertir a datetime, ignorando errores, y obtener el máximo
+                valid_timestamps = pd.to_datetime(existing_df['timestamp_found'], errors='coerce').dropna()
+                if not valid_timestamps.empty:
+                    last_run_time = valid_timestamps.max()
+                    print(f"Último registro encontrado en CSV: {last_run_time}")
+            except Exception as e_ts:
+                print(f"Advertencia: Error al procesar timestamps del CSV: {e_ts}")
+                last_run_time = None # Fallback si hay error
+        # --- Fin Nuevo ---
 
     except pd.errors.EmptyDataError:
         print("El archivo CSV existente está vacío.")
-        existing_df = pd.DataFrame(columns=expected_columns) # Crear DF vacío con columnas
+        existing_df = pd.DataFrame(columns=expected_columns)
     except Exception as e:
         print(f"Error al leer el archivo CSV existente: {e}. Se procederá como si no existiera.")
-        existing_df = pd.DataFrame(columns=expected_columns) # Resetear con columnas
+        existing_df = pd.DataFrame(columns=expected_columns)
         found_job_ids = set()
 else:
     print(f"El archivo '{OUTPUT_FILENAME}' no existe. Se creará uno nuevo.")
-    existing_df = pd.DataFrame(columns=expected_columns) # Crear DF vacío con columnas
+    existing_df = pd.DataFrame(columns=expected_columns)
 
+# --- Determinar parámetro de tiempo (tm) ---
+tm_param = 14 # Default
+
+if last_run_time:
+    time_diff = datetime.now() - last_run_time
+    days_diff = time_diff.days
+    print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
+    if days_diff <= 2: tm_param = 3
+    elif days_diff <= 7: tm_param = 7
+    # else: se mantiene 14
+else:
+    print("No se encontró fecha de última ejecución en CSV. Usando default tm=14.")
+
+print(f"Parámetro de búsqueda por tiempo establecido: tm={tm_param}")
 
 new_jobs_list = []
 processed_titles_occ = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
@@ -244,9 +259,10 @@ processed_titles_occ = {'included': [], 'excluded_explicit': [], 'excluded_impli
 print("======= INICIANDO SCRAPING DE OFERTAS OCC =======")
 
 # 2. Iniciar Scraping
-for keyword in SEARCH_KEYWORDS:
-    base_url = BASE_URL_TEMPLATE.format(keyword=keyword)
-    print(f"\n========== Procesando Búsqueda para: '{keyword}' ==========")
+for i, keyword in enumerate(SEARCH_KEYWORDS): # MODIFICADO: Usar enumerate para saber si es el primero
+    # MODIFICADO: Añadir parámetro tm a la URL base
+    base_url_with_tm = f"{BASE_URL_TEMPLATE.format(keyword=keyword)}&tm={tm_param}"
+    print(f"\n========== Procesando Búsqueda {i+1}/{len(SEARCH_KEYWORDS)} para: '{keyword}' (tm={tm_param}) ==========")
     page = 1
     max_pages = 1
     actual_jobs_per_page = 0
@@ -254,10 +270,11 @@ for keyword in SEARCH_KEYWORDS:
     skipped_inclusion_fail_total = 0
 
     while True:
-        separator = '&' if '?' in base_url else '?'
-        current_url = f"{base_url}{separator}page={page}" if page > 1 else base_url
+        separator = '&'
+        current_url = f"{base_url_with_tm}{separator}page={page}" if page > 1 else base_url_with_tm
         print(f"\n--- Scraping página {page} {'de '+str(max_pages) if max_pages > 1 else ''} para '{keyword}' ---")
 
+        # ... (resto del bucle while y procesamiento SIN CAMBIOS) ...
         try:
             response = requests.get(current_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
@@ -322,11 +339,9 @@ for keyword in SEARCH_KEYWORDS:
                          included = True
 
                     # Deduplicación y Adición con Timestamp
-                    if included and job_id and job_id not in found_job_ids: # Asegurar que job_id no sea None
-                        # NUEVO: Obtener y añadir timestamp
+                    if included and job_id and job_id not in found_job_ids:
                         timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         job_info['timestamp_found'] = timestamp_str
-                        # --- Fin Nuevo ---
                         new_jobs_list.append(job_info)
                         found_job_ids.add(job_id)
                         found_on_page += 1
@@ -355,24 +370,29 @@ for keyword in SEARCH_KEYWORDS:
         except requests.exceptions.Timeout:
              print(f"Error: Timeout en la página {page} para '{keyword}'. Reintentando en {RETRY_DELAY} segundos...")
              time.sleep(RETRY_DELAY)
+             continue # Reintentar la misma página
         except requests.exceptions.RequestException as e:
             print(f"Error de Red/HTTP en la página {page} para '{keyword}': {e}")
             print("Omitiendo el resto de páginas para esta búsqueda.")
             break
         except Exception as e:
             print(f"Error general procesando la página {page} para '{keyword}': {e}")
-            print("Intentando continuar con la siguiente página...")
-            page += 1
-            if page > max_pages and max_pages >= 1 :
-                 print("Superado el número de páginas estimado tras error. Pasando a la siguiente keyword.")
-                 break
-            time.sleep(2)
+            print("Omitiendo el resto de páginas para esta búsqueda por error inesperado.")
+            break
 
     print(f"\nResumen para '{keyword}':")
     if skipped_excluded_title_total > 0: print(f"  Total descartados por exclusión: {skipped_excluded_title_total}")
     if skipped_inclusion_fail_total > 0: print(f"  Total descartados por inclusión: {skipped_inclusion_fail_total}")
 
+    # --- NUEVO: Pausa entre keywords ---
+    if i < len(SEARCH_KEYWORDS) - 1: # No esperar después de la última keyword
+        print(f"\nEsperando {DELAY_BETWEEN_PAGES} segundos antes de la siguiente keyword...")
+        time.sleep(DELAY_BETWEEN_PAGES)
+    # --- Fin Nuevo ---
+
+
 # --- 3. Combinar y Guardar Resultados ---
+# ... (sin cambios, ya no escribe timestamp aquí) ...
 print("\n======= PROCESANDO RESULTADOS FINALES OCC =======")
 
 print("\n--- Reporte de Títulos Procesados OCC ---")
@@ -391,11 +411,10 @@ if new_jobs_list:
 
     if not existing_df.empty:
         print(f"Combinando {len(new_jobs_list)} nuevos con {len(existing_df)} existentes de OCC.")
-        # Asegurar columnas consistentes antes de concatenar
-        all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(expected_columns)) # Asegura que todas las esperadas estén
+        all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(expected_columns))
         new_df = new_df.reindex(columns=all_cols)
         existing_df = existing_df.reindex(columns=all_cols)
-        combined_df = pd.concat([existing_df, new_df], ignore_index=True) # Existentes primero
+        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
     else:
         print("No había datos existentes de OCC, guardando solo los nuevos.")
         combined_df = new_df
@@ -403,7 +422,7 @@ if new_jobs_list:
     initial_rows = len(combined_df)
     if 'job_id' in combined_df.columns:
          combined_df['job_id'] = combined_df['job_id'].astype(str)
-         combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True) # Mantener primera (existente)
+         combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
          final_rows = len(combined_df)
          if initial_rows > final_rows:
               print(f"Se eliminaron {initial_rows - final_rows} duplicados durante la combinación final de OCC.")
@@ -411,16 +430,15 @@ if new_jobs_list:
          print("Advertencia: No se pudo realizar la deduplicación final de OCC por falta de columna 'job_id'.")
 
     try:
-        # Orden de columnas actualizado
         columns_order = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
-        # Asegurar que todas las columnas existan en el DF combinado final
         for col in columns_order:
             if col not in combined_df.columns:
                 combined_df[col] = pd.NA
-        combined_df = combined_df[columns_order] # Reordenar
+        combined_df = combined_df[columns_order]
 
         combined_df.to_csv(OUTPUT_FILENAME, index=False, encoding='utf-8-sig')
         print(f"\nDatos de OCC actualizados guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df)} ofertas en total).")
+
     except Exception as e:
         print(f"\nError al guardar el archivo CSV final de OCC: {e}")
 
@@ -430,5 +448,6 @@ elif not new_jobs_list and not existing_df.empty:
     print(f"El archivo '{OUTPUT_FILENAME}' contiene {count_existing} ofertas.")
 else:
     print("\nNo se encontraron ofertas nuevas de OCC y no existía archivo previo.")
+
 
 print("\n======= FIN DEL SCRIPT =======")

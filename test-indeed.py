@@ -1,12 +1,9 @@
-# import requests
 from bs4 import BeautifulSoup
 import time
-# import math
 import re
 import pandas as pd
-import sys
 import os
-from datetime import datetime # NUEVO: Importar datetime
+from datetime import datetime
 
 # --- Selenium Imports ---
 from selenium import webdriver
@@ -17,7 +14,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 # --- Funciones Selenium ---
-# setup_driver_remote (sin cambios)
+# setup_driver_remote y close_cookie_popup (sin cambios)
 def setup_driver_remote():
     print("Conectando a la instancia de Chrome en modo depuración remota...")
     chrome_options = ChromeOptions()
@@ -30,7 +27,6 @@ def setup_driver_remote():
         print(f"Error al conectar con la instancia remota de Chrome: {e}")
         exit(1)
 
-# close_cookie_popup (sin cambios)
 def close_cookie_popup(driver, wait_short):
     """Intenta encontrar y cerrar el pop-up de cookies."""
     try:
@@ -44,38 +40,45 @@ def close_cookie_popup(driver, wait_short):
     except Exception as e:
         print(f"Error al intentar cerrar pop-up de cookies: {e}")
 
-
 # --- Configuración General ---
-DELAY_BETWEEN_PAGES = 10 # Aumentado ligeramente
+DELAY_BETWEEN_PAGES = 10
 RETRY_DELAY = 10
-REQUEST_TIMEOUT = 60 # segundos
+REQUEST_TIMEOUT = 60
 
 # --- Configuración Específica para INDEED ---
-SEARCH_KEYWORDS_INDEED = [ # <-- Tu lista original
+SEARCH_KEYWORDS_INDEED = [
     "devops", "cloud", "aws", "gcp", "sre", "site reliability engineer",
     "mlops", "ci/cd", "kubernetes",
-    # "docker", "terraform", "ansible", "platform engineer", "infrastructure", "automation",
 ]
-BASE_URL_TEMPLATE_INDEED = "https://mx.indeed.com/jobs?q={keyword}&l=Remote&fromage=14&sc=0kf%3Aattr%28DSQF7%29%3B&sort=date&start={start}"
-OUTPUT_FILENAME_INDEED = "indeed_multi_keyword_remoto_jobs.csv" # Nombre actualizado
+BASE_URL_TEMPLATE_INDEED = "https://mx.indeed.com/jobs?q={keyword}&l=Remote&sc=0kf%3Aattr%28DSQF7%29%3B&sort=date&start={start}"
+OUTPUT_FILENAME_INDEED = "indeed_multi_keyword_remoto_jobs.csv"
 INDEED_PAGE_INCREMENT = 10
 
-# --- Filtros de Título para INDEED (minúsculas) ---
-EXCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
-    "software", "development", "data", ".net", "python", "quality", "security", 
-    "salesforce", "desarroll", "qa", "ruby", "test", "datos", "fullstack" # "azure"
+# --- Filtros de Título para INDEED ---
+# ... (sin cambios) ...
+EXCLUDE_TITLE_KEYWORDS = [
+    "software", "development", "data", ".net", "python", "quality", "security", "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack"
 ]
-INCLUDE_TITLE_KEYWORDS = [ # <-- Tu lista original
-    "devops", "sre", "cloud", "mlops", "platform", "infrastructure",
-    "site reliability", "plataforma","nube",
-    "automation", "automatización", "ci/cd", "pipeline", "aws", "azure",
-    "gcp", "google cloud", "amazon web services", "cloud native", "kubernetes",
-    "k8s", "docker", "container", "contenedor", "serverless", "terraform",
-    "ansible", "jenkins", "gitlab", "iac", "monitoring", "monitorización",
-    "observability", "observabilidad", "prometheus", "grafana", "architect", "arquitecto"
+INCLUDE_TITLE_KEYWORDS = [
+    "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
+    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "ingeniero de la nube", "nube",
+    "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
+    "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native", "computación en la nube",
+    "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
+    "orquestación", "virtualización",
+    "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef", "openstack", "infrastructure as code", "iac",
+    "configuración como código",
+    "prometheus", "grafana", "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
+    "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad", "resilience", "resiliencia",
+    "devsecops", "seguridad en la nube", "dataops", "integración continua", "entrega continua",
+    "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
+    "failover", "disaster recovery"
 ]
 
-# --- Función parse_indeed_job_card (sin cambios) ---
+# --- Funciones Auxiliares ---
+# ELIMINADAS: read_last_run_time y write_last_run_time
+# parse_indeed_job_card (sin cambios)
+# ... (código de parse_indeed_job_card idéntico al anterior) ...
 def parse_indeed_job_card(card_soup):
     """Extrae la información de interés de una tarjeta de trabajo de Indeed."""
     job_data = {}
@@ -177,24 +180,35 @@ def parse_indeed_job_card(card_soup):
 # 1. Cargar datos existentes
 existing_df_indeed = pd.DataFrame()
 found_job_ids_indeed = set()
-# NUEVO: Definir columnas esperadas
 expected_columns_indeed = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
+last_run_time_indeed = None # MODIFICADO: Inicializar
 
 if os.path.exists(OUTPUT_FILENAME_INDEED):
     print(f"Cargando datos existentes desde '{OUTPUT_FILENAME_INDEED}'...")
     try:
         existing_df_indeed = pd.read_csv(OUTPUT_FILENAME_INDEED)
-        # Asegurar columnas
         for col in expected_columns_indeed:
             if col not in existing_df_indeed.columns:
                 existing_df_indeed[col] = pd.NA
-        # Cargar IDs
         if 'job_id' in existing_df_indeed.columns:
             existing_df_indeed['job_id'] = existing_df_indeed['job_id'].astype(str)
             found_job_ids_indeed = set(existing_df_indeed['job_id'].dropna().tolist())
             print(f"Se cargaron {len(found_job_ids_indeed)} IDs existentes de Indeed.")
         else:
             print(f"Advertencia: '{OUTPUT_FILENAME_INDEED}' no tiene columna 'job_id'.")
+            existing_df_indeed['job_id'] = pd.Series(dtype='str')
+
+        # --- NUEVO: Intentar obtener el último timestamp del CSV ---
+        if 'timestamp_found' in existing_df_indeed.columns and not existing_df_indeed['timestamp_found'].isnull().all():
+            try:
+                valid_timestamps = pd.to_datetime(existing_df_indeed['timestamp_found'], errors='coerce').dropna()
+                if not valid_timestamps.empty:
+                    last_run_time_indeed = valid_timestamps.max()
+                    print(f"Último registro encontrado en CSV (Indeed): {last_run_time_indeed}")
+            except Exception as e_ts:
+                print(f"Advertencia: Error al procesar timestamps del CSV (Indeed): {e_ts}")
+                last_run_time_indeed = None
+        # --- Fin Nuevo ---
 
     except pd.errors.EmptyDataError:
         print(f"El archivo '{OUTPUT_FILENAME_INDEED}' está vacío.")
@@ -207,6 +221,21 @@ else:
     print(f"El archivo '{OUTPUT_FILENAME_INDEED}' no existe. Se creará uno nuevo.")
     existing_df_indeed = pd.DataFrame(columns=expected_columns_indeed)
 
+# --- Determinar parámetro fromage ---
+fromage_param = 14 # Default
+
+if last_run_time_indeed:
+    time_diff_indeed = datetime.now() - last_run_time_indeed
+    days_diff_indeed = time_diff_indeed.days
+    print(f"Última ejecución de Indeed (según CSV) detectada hace {days_diff_indeed} días.")
+    if days_diff_indeed <= 1: fromage_param = 1
+    elif days_diff_indeed <= 3: fromage_param = 3
+    elif days_diff_indeed <= 7: fromage_param = 7
+    # else: se mantiene 14
+else:
+    print("No se encontró fecha de última ejecución en CSV (Indeed). Usando default fromage=14.")
+
+print(f"Parámetro de búsqueda por tiempo establecido: fromage={fromage_param}")
 
 new_jobs_list_indeed = []
 processed_titles_indeed = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
@@ -214,29 +243,60 @@ processed_titles_indeed = {'included': [], 'excluded_explicit': [], 'excluded_im
 # --- Inicializar Driver ---
 driver = setup_driver_remote()
 wait_long = WebDriverWait(driver, REQUEST_TIMEOUT)
-wait_short = WebDriverWait(driver, 5)
+wait_short = WebDriverWait(driver, 3) # Reducir espera corta para chequeo rápido
 
 print("======= INICIANDO SCRAPING DE OFERTAS INDEED (CON SELENIUM) =======")
 
 # 2. Iniciar Scraping
 try:
-    for keyword in SEARCH_KEYWORDS_INDEED:
-        print(f"\n========== Procesando Búsqueda Indeed para: '{keyword}' ==========")
+    for i, keyword in enumerate(SEARCH_KEYWORDS_INDEED):
+        # MODIFICADO: Añadir fromage a la URL base
+        base_url_with_fromage = f"{BASE_URL_TEMPLATE_INDEED}&fromage={fromage_param}"
+        print(f"\n========== Procesando Búsqueda {i+1}/{len(SEARCH_KEYWORDS_INDEED)} para: '{keyword}' (fromage={fromage_param}) ==========")
         page = 1
         keep_paging = True
-        # NUEVO: Contadores por keyword
         skipped_excluded_title_total = 0
         skipped_inclusion_fail_total = 0
 
         while keep_paging:
             start_index = (page - 1) * INDEED_PAGE_INCREMENT
-            current_url = BASE_URL_TEMPLATE_INDEED.format(keyword=keyword, start=start_index)
+            # MODIFICADO: Construir URL
+            current_url = base_url_with_fromage.format(keyword=keyword, start=start_index)
             print(f"\n--- Scraping página {page} para '{keyword}' (start={start_index}) ---")
             print(f"URL: {current_url}")
 
             try:
                 driver.get(current_url)
                 close_cookie_popup(driver, wait_short)
+
+                # --- NUEVO: Chequeo Rápido de "Sin Resultados" ---
+                no_results_found = False
+                try:
+                    # Intentar localizar un elemento que indique cero resultados
+                    # Ajusta el selector XPath según lo que veas en la página real de "sin resultados" de Indeed MX
+                    # Ejemplo: buscar un div que contenga el texto específico
+                    no_results_xpath = "//*[contains(text(), 'no produjo ningún resultado de empleos nuevos') or contains(text(), 'did not match any jobs')]"
+                    # Usar find_elements con espera corta para no bloquear si hay resultados
+                    WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, "//*"))) # Esperar que algo cargue
+                    no_results_elements = driver.find_elements(By.XPATH, no_results_xpath)
+
+                    if no_results_elements:
+                        print(f"Detectado mensaje de 'Sin resultados' para '{keyword}'. Saltando keyword.")
+                        no_results_found = True
+                        break # Salir del bucle 'while keep_paging' para esta keyword
+
+                except TimeoutException:
+                    # Es normal si no se encuentra el mensaje de "sin resultados", significa que SÍ hay resultados (o la página aún no carga)
+                    pass
+                except Exception as e_nores:
+                    print(f"Advertencia: Error menor al buscar mensaje 'sin resultados': {e_nores}")
+                    # Continuar de todas formas intentando buscar las tarjetas
+
+                if no_results_found:
+                    continue # Salta el resto del código de la página y va al siguiente keyword
+
+                # --- Fin Chequeo Rápido ---
+
 
                 print("Esperando que la lista de trabajos cargue...")
                 job_list_container = None
@@ -251,20 +311,22 @@ try:
                     time.sleep(2)
                 except TimeoutException:
                     print(f"Timeout esperando la lista/tarjetas de trabajos en la página {page}.")
+                    # Aquí SÍ queremos guardar screenshot, porque no fue la página de "sin resultados"
                     try:
                          screenshot_filename = f"debug_timeout_page_{page}_{keyword.replace(' ', '_')}.png"
                          driver.save_screenshot(screenshot_filename)
                          print(f"Screenshot guardado en: {screenshot_filename}")
                     except Exception as img_e:
                          print(f"No se pudo guardar el screenshot: {img_e}")
-                    if page == 1:
-                        print(f"No se encontraron resultados iniciales visibles para '{keyword}'. Saltando keyword.")
-                    else:
-                        print(f"Timeout en página {page}. Asumiendo fin de resultados para esta keyword.")
+
+                    if page == 1: # Si falló en la primera página (y no era "sin resultados")
+                         print(f"Error cargando resultados iniciales para '{keyword}' (no era página 'sin resultados'). Saltando keyword.")
+                    else: # Si falló en páginas posteriores
+                         print(f"Timeout en página {page}. Asumiendo fin de resultados para esta keyword.")
                     keep_paging = False
-                    continue
+                    continue # Saltar al siguiente ciclo del while (que terminará)
                 except NoSuchElementException:
-                     print(f"Error crítico: No se encontró el contenedor principal 'mosaic-provider-jobcards' en la página {page}. Saltando keyword.")
+                     print(f"Error crítico: No se encontró el contenedor 'mosaic-provider-jobcards' (después del chequeo 'sin resultados'). Saltando keyword.")
                      keep_paging = False
                      continue
                 except Exception as e_wait:
@@ -272,6 +334,7 @@ try:
                     keep_paging = False
                     continue
 
+                # ... (resto del procesamiento de tarjetas, filtros, adición con timestamp - SIN CAMBIOS) ...
                 page_html = driver.page_source
                 soup = BeautifulSoup(page_html, 'lxml') # Usar lxml si está instalado
                 job_list_container_soup = soup.find('div', id='mosaic-provider-jobcards')
@@ -326,10 +389,8 @@ try:
 
                         # Deduplicación y Adición con Timestamp
                         if included and job_id and job_id not in found_job_ids_indeed:
-                            # NUEVO: Obtener y añadir timestamp
                             timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                             job_info['timestamp_found'] = timestamp_str
-                            # --- Fin Nuevo ---
                             new_jobs_list_indeed.append(job_info)
                             found_job_ids_indeed.add(job_id)
                             found_on_page += 1
@@ -347,7 +408,8 @@ try:
                 if skipped_duplicates > 0:
                     print(f"Se omitieron {skipped_duplicates} ofertas duplicadas.")
 
-                # Comprobar enlace "Siguiente"
+
+                # Comprobar enlace "Siguiente" (sin cambios)
                 try:
                     next_page_links = driver.find_elements(By.CSS_SELECTOR, "a[data-testid='pagination-page-next']")
                     if not next_page_links:
@@ -365,6 +427,7 @@ try:
                      print(f"Esperando {DELAY_BETWEEN_PAGES} segundo(s) antes de la página {page}...")
                      time.sleep(DELAY_BETWEEN_PAGES)
 
+            # ... (Manejo de excepciones del bucle interno SIN CAMBIOS) ...
             except TimeoutException:
                  print(f"Error: Timeout general en la página {page} para '{keyword}'. Deteniendo para esta keyword.")
                  keep_paging = False
@@ -380,27 +443,29 @@ try:
                 print("Deteniendo para esta keyword debido a error inesperado.")
                 keep_paging = False
 
-        # --- NUEVO: Imprimir resumen total de la keyword (opcional) ---
         print(f"\nResumen para '{keyword}':")
         if skipped_excluded_title_total > 0: print(f"  Total descartados por exclusión: {skipped_excluded_title_total}")
         if skipped_inclusion_fail_total > 0: print(f"  Total descartados por inclusión: {skipped_inclusion_fail_total}")
 
+        # --- NUEVO: Pausa entre keywords también para Indeed ---
+        if i < len(SEARCH_KEYWORDS_INDEED) - 1:
+            print(f"\nEsperando {DELAY_BETWEEN_PAGES} segundos antes de la siguiente keyword...")
+            time.sleep(DELAY_BETWEEN_PAGES) # Reutilizamos la constante definida en OCC o define una nueva
 
+except Exception as global_e:
+    print(f"\nError GOBAL durante la ejecución de Indeed: {global_e}")
 finally:
     if 'driver' in locals() and driver is not None:
-        print("\nCerrando WebDriver...")
-        try:
-            # No usar quit() si nos conectamos remotamente a un navegador que queremos mantener abierto
-            # driver.quit()
-            print("WebDriver remoto sigue conectado. Ciérralo manualmente si es necesario.")
-        except Exception as e:
-            print(f"Error al intentar cerrar WebDriver (puede ignorarse si es conexión remota): {e}")
+        print("\nCerrando conexión con WebDriver remoto...")
+        # driver.quit() # Comentado para no cerrar navegador manual
+        print("WebDriver remoto sigue conectado. Ciérralo manualmente si es necesario.")
 
 
 # --- 3. Combinar y Guardar Resultados ---
+# ... (sin cambios, ya no escribe timestamp aquí) ...
 print("\n======= PROCESANDO RESULTADOS FINALES INDEED =======")
 
-print("\n--- Reporte de Títulos Procesados Indeed ---") # Mensaje actualizado
+print("\n--- Reporte de Títulos Procesados Indeed ---")
 print(f"Total Incluidos: {len(processed_titles_indeed['included'])}")
 print(f"Total Excluidos (por keyword explícita): {len(processed_titles_indeed['excluded_explicit'])}")
 print(f"Total Excluidos (por fallo de inclusión): {len(processed_titles_indeed.get('excluded_implicit', []))}")
@@ -415,14 +480,12 @@ if new_jobs_list_indeed:
         print("Advertencia: El nuevo DataFrame Indeed no contiene la columna 'job_id'.")
         new_df_indeed['job_id'] = pd.Series(dtype='str')
 
-
     if not existing_df_indeed.empty:
         print(f"Combinando {len(new_jobs_list_indeed)} nuevos con {len(existing_df_indeed)} existentes de Indeed.")
-        # Asegurar columnas consistentes
         all_cols = list(set(new_df_indeed.columns) | set(existing_df_indeed.columns) | set(expected_columns_indeed))
         new_df_indeed = new_df_indeed.reindex(columns=all_cols)
         existing_df_indeed = existing_df_indeed.reindex(columns=all_cols)
-        combined_df_indeed = pd.concat([existing_df_indeed, new_df_indeed], ignore_index=True) # Existentes primero
+        combined_df_indeed = pd.concat([existing_df_indeed, new_df_indeed], ignore_index=True)
     else:
         print("No había datos existentes de Indeed, guardando solo los nuevos.")
         combined_df_indeed = new_df_indeed
@@ -430,7 +493,7 @@ if new_jobs_list_indeed:
     initial_rows = len(combined_df_indeed)
     if 'job_id' in combined_df_indeed.columns:
         combined_df_indeed['job_id'] = combined_df_indeed['job_id'].astype(str)
-        combined_df_indeed.drop_duplicates(subset=['job_id'], keep='first', inplace=True) # Mantener primera (existente)
+        combined_df_indeed.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
         final_rows = len(combined_df_indeed)
         if initial_rows > final_rows:
              print(f"Se eliminaron {initial_rows - final_rows} duplicados durante la combinación final de Indeed.")
@@ -438,7 +501,6 @@ if new_jobs_list_indeed:
          print("Advertencia: No se pudo realizar la deduplicación final de Indeed por falta de columna 'job_id'.")
 
     try:
-        # Orden de columnas actualizado
         columns_order = ['job_id', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
         for col in columns_order:
             if col not in combined_df_indeed.columns:
@@ -447,6 +509,7 @@ if new_jobs_list_indeed:
 
         combined_df_indeed.to_csv(OUTPUT_FILENAME_INDEED, index=False, encoding='utf-8-sig')
         print(f"\nDatos de Indeed actualizados guardados exitosamente en '{OUTPUT_FILENAME_INDEED}' ({len(combined_df_indeed)} ofertas en total).")
+
     except Exception as e:
         print(f"\nError al guardar el archivo CSV final de Indeed: {e}")
 
