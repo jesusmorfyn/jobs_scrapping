@@ -1,53 +1,56 @@
-﻿job_id,platform,title,company,salary,location,posted_date,timestamp_found,link
-20288410,OCC,DevOps Manager,Empresa confidencial,Sueldo no mostrado por la empresa,"Guadalajara,, Jal.",Hace 1 día,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20288410/
-20287366,OCC,Ingeniero DevOps Sr - Azure,Empresa confidencial,Sueldo no mostrado por la empresa,CDMX,Hace 1 día,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20287366/
-20272228,OCC,Ingeniero en la Nube AWS,DXC Technology,"$44,200 Mensual",Remoto/No especificado,Hace 1 día,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20272228/
-20272421,OCC,Ingeniero en la nube Azure,DXC Technology,"$44,200 Mensual",Remoto/No especificado,Hace 1 día,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20272421/
-20281736,OCC,DevOps Engineer,"Stefanini México, S.A....",Sueldo no mostrado por la empresa,CDMX,Hace 1 día,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20281736/
-20269385,OCC,DevOps/Platform Engineer,Empresa confidencial,"$50,000 - $60,000 Mensual","Monterrey,, N.L.",Hace 2 días,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20269385/
-20275720,OCC,AZURE,EAS CONSULTING SC,Sueldo no mostrado por la empresa,"Santa Fe Cuajimalpa,, Cuajimalpa de Morelos,, CDMX",Hace 3 días,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20275720/
-20282388,OCC,Senior DevOps Engineer,Perficient,Sueldo no mostrado por la empresa,Remoto/No especificado,Hace 5 días,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20282388/
-20280908,OCC,Ingeniero DevOps,AMA RIS CONSULTING,Sueldo no mostrado por la empresa,Remoto/No especificado,Hace 5 días,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20280908/
-20280572,OCC,Ingeniero en automatización,Softtek,Sueldo no mostrado por la empresa,Remoto/No especificado,Hace 5 días,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20280572/
-20263355,OCC,Ing Infraestructura GCP,MOBIIK,"$55,000 - $60,000 Mensual",Remoto/No especificado,Hace 5 días,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20263355/
-20252639,OCC,Ingeniero DevOps,XIDERAL,Sueldo no mostrado por la empresa,CDMX,Hace 1 sem,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20252639/
-20254883,OCC,Google Cloud DevOps,HK CONSULTING,"$65,000 - $80,000 Mensual",Remoto/No especificado,Hace 2 sem,2025-04-09 10:27:16,https://www.occ.com.mx/empleo/oferta/20254883/
-d111d4c582e38707,Indeed,Site reliability Release Engineer,Sequoia Connect,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=d111d4c582e38707
-a304a52fadc3a218,Indeed,Devops Azure,Tecnología y Servicios S.A. de C.V.,"$80,000 a $84,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=a304a52fadc3a218
-40afd9a61f3f7749,Indeed,On-premise DevOps Engineer,3Pillar,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=40afd9a61f3f7749
-6009e11161c3af37,Indeed,Lead DevSecOps Engineer,NobleAI,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=6009e11161c3af37
-b95b4d9320ea6a80,Indeed,DevOps Engineer,"EPAM Systems, Inc.",No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=b95b4d9320ea6a80
-6e634ae926f79434,Indeed,Lead Automation Engineer – Playwright - Mexico,HItekhub LLC,$347 a $449 por hora,Home Office (Desde casa),No encontrado,2025-04-09 10:27:38,https://mx.indeed.com/viewjob?jk=6e634ae926f79434
-dfe24e58ffbc7963,Indeed,DevOps Engineer,Capgemini Engineering,"$40,000 a $60,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:27:38,https://mx.indeed.com/viewjob?jk=dfe24e58ffbc7963
-7b7a2ddd380b59bd,Indeed,DevOps Engineer,STEFANINI LATAM,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:38,https://mx.indeed.com/viewjob?jk=7b7a2ddd380b59bd
-b4fb7926680fdb58,Indeed,DevOps Azure Engineer - TRABAJO REMOTO,U hi,"$80,000 a $85,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=b4fb7926680fdb58
-dc4f71b0831e2f4a,Indeed,Ingeniero de plataformas - Trainee,ITT Head Hunter,"Desde $12,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=dc4f71b0831e2f4a
-1611c7f630ac70f0,Indeed,Support Engineer AWS,The Cervantes Group,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=1611c7f630ac70f0
-accadd546d94b061,Indeed,DevOps Engineer - Remote inside México,Capgemini Engineering,"$60,000 a $72,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=accadd546d94b061
-14eb5ce606644ade,Indeed,Cloud Engineer,Boombit,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=14eb5ce606644ade
-11ca488bfcab1ca7,Indeed,AZURE DEVOPS,BOSON INTEL,"$80,000 a $85,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=11ca488bfcab1ca7
-d91ac007fa59e872,Indeed,Senior DevOps Engineer,"EPAM Systems, Inc.",No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=d91ac007fa59e872
-220e9c2228c9768b,Indeed,Arquitecto DevOps,Movit SG,"$90,000 a $95,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=220e9c2228c9768b
-470603c5f89ff075,Indeed,Cloud Engineer,Boombit,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=470603c5f89ff075
-ba4a4ab8289ad8aa,Indeed,UI DevOps Engineer,Luxoft,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=ba4a4ab8289ad8aa
-8754d950283ea0b2,Indeed,"Senior DevOps Engineer (Azure, AI)",3Pillar,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=8754d950283ea0b2
-2e7786a25527a76a,Indeed,Cloud Cost Engineer C1 Senior,Púrpura,"$50,000 a $70,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:28:27,https://mx.indeed.com/viewjob?jk=2e7786a25527a76a
-20274210,OCC,Cloud FinOps Lead Consultant (REMOTE),NTT DATA SERVICES MEXI...,Sueldo no mostrado por la empresa,Remoto/No especificado,Hoy,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20274210/
-20273636,OCC,Oracle Integration Cloud Technical Consultant,EY GDS CS MEXICO SC,"$50,000 - $60,000 Mensual",Remoto/No especificado,Hoy,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20273636/
-20273685,OCC,Consultants with expertise in Oracle EPM Cloud,EY GDS CS MEXICO SC,"$50,000 - $60,000 Mensual",Remoto/No especificado,Hoy,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20273685/
-20288345,OCC,Especialista en Migración (Citrix a AWS AppStream 2.0),Empresa confidencial,Sueldo no mostrado por la empresa,CDMX,Hace 1 día,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20288345/
-20287184,OCC,Técnico de Virtualización LINUX - REMOTO,echBusiness Operacione...,"$30,000 - $34,000 Mensual",Remoto/No especificado,Hace 1 día,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20287184/
-20278703,OCC,Linux Cloud Support Engineer- L2,CMS,"$44,000 Mensual","Monterrey,, N.L.",Hace 6 días,2025-04-09 10:28:38,https://www.occ.com.mx/empleo/oferta/20278703/
-20255786,OCC,Especialista en Aplicaciones con IA-NUBE,SC Empresarial,Sueldo no mostrado por la empresa,CDMX,Hace 7 días,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20255786/
-20253950,OCC,Middle Site Reliability Engineer,Monterrey IT Cluster,"$50,000 - $65,000 Mensual",CDMX,Hace 1 sem,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20253950/
-20256642,OCC,Consultor AWS,INGENIOSI FACILITADORA,Sueldo no mostrado por la empresa,"Miguel Hidalgo,, CDMX",Hace 1 sem,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20256642/
-20250215,OCC,Cloud Architect AWS,Softtek,Sueldo no mostrado por la empresa,"Monterrey,, N.L.",Hace 1 sem,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20250215/
-341c72eb3b369616,Indeed,Especialista en migración (Citrix a AWS AppStream 2.0 ),Grupo Pissa S.A de C.V,"Desde $20,797.74 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:29:06,https://mx.indeed.com/viewjob?jk=341c72eb3b369616
-116150bbf8dde2bd,Indeed,Ingeniero en Sistemas especialista en Veeam cloud connect,Coworking group cwg,"$45,000 a $60,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:29:06,https://mx.indeed.com/viewjob?jk=116150bbf8dde2bd
-3e20531c8712d5d6,Indeed,Cloud & Automation Engineer - B,Praxis,"$90,000 a $95,000 por mes",Home Office (Desde casa),No encontrado,2025-04-09 10:29:22,https://mx.indeed.com/viewjob?jk=3e20531c8712d5d6
-479ec3d4a9b9ce59,Indeed,Senior Site Reliability Engineer,"EPAM Systems, Inc.",No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=479ec3d4a9b9ce59
-9e750b4246ec71ae,Indeed,IT Infrastructure Project Manager,The Cervantes Group,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=9e750b4246ec71ae
-34b4bd086c71f7f6,Indeed,Senior DevOps Engineer,"EPAM Systems, Inc.",No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=34b4bd086c71f7f6
-dc13f3d8de529285,Indeed,Senior Site Reliability Engineer (CI/CD),Wizeline,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=dc13f3d8de529285
-20257694,OCC,Infrastructure Architect,"AZKA IT CONSULTING, SA...","$75,000 - $85,000 Mensual",CDMX,Hace 6 días,2025-04-09 10:33:39,https://www.occ.com.mx/empleo/oferta/20257694/
-4a5f04817443b4f1,Indeed,Release Manager,Genius™,No especificado,Home Office (Desde casa),No encontrado,2025-04-09 10:35:11,https://mx.indeed.com/viewjob?jk=4a5f04817443b4f1
+﻿job_id,platform,title,company,salary,timestamp_found,link
+20288410,OCC,DevOps Manager,Empresa confidencial,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20288410/
+20287366,OCC,Ingeniero DevOps Sr - Azure,Empresa confidencial,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20287366/
+20272228,OCC,Ingeniero en la Nube AWS,DXC Technology,"$44,200 Mensual",2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20272228/
+20272421,OCC,Ingeniero en la nube Azure,DXC Technology,"$44,200 Mensual",2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20272421/
+20281736,OCC,DevOps Engineer,"Stefanini México, S.A....",Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20281736/
+20269385,OCC,DevOps/Platform Engineer,Empresa confidencial,"$50,000 - $60,000 Mensual",2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20269385/
+20275720,OCC,AZURE,EAS CONSULTING SC,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20275720/
+20282388,OCC,Senior DevOps Engineer,Perficient,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20282388/
+20280908,OCC,Ingeniero DevOps,AMA RIS CONSULTING,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20280908/
+20280572,OCC,Ingeniero en automatización,Softtek,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20280572/
+20263355,OCC,Ing Infraestructura GCP,MOBIIK,"$55,000 - $60,000 Mensual",2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20263355/
+20252639,OCC,Ingeniero DevOps,XIDERAL,Sueldo no mostrado por la empresa,2025-04-09 10:27:05,https://www.occ.com.mx/empleo/oferta/20252639/
+20254883,OCC,Google Cloud DevOps,HK CONSULTING,"$65,000 - $80,000 Mensual",2025-04-09 10:27:16,https://www.occ.com.mx/empleo/oferta/20254883/
+d111d4c582e38707,Indeed,Site reliability Release Engineer,Sequoia Connect,No especificado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=d111d4c582e38707
+a304a52fadc3a218,Indeed,Devops Azure,Tecnología y Servicios S.A. de C.V.,"$80,000 a $84,000 por mes",2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=a304a52fadc3a218
+40afd9a61f3f7749,Indeed,On-premise DevOps Engineer,3Pillar,No especificado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=40afd9a61f3f7749
+6009e11161c3af37,Indeed,Lead DevSecOps Engineer,NobleAI,No especificado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=6009e11161c3af37
+b95b4d9320ea6a80,Indeed,DevOps Engineer,"EPAM Systems, Inc.",No especificado,2025-04-09 10:27:22,https://mx.indeed.com/viewjob?jk=b95b4d9320ea6a80
+6e634ae926f79434,Indeed,Lead Automation Engineer – Playwright - Mexico,HItekhub LLC,$347 a $449 por hora,2025-04-09 10:27:38,https://mx.indeed.com/viewjob?jk=6e634ae926f79434
+dfe24e58ffbc7963,Indeed,DevOps Engineer,Capgemini Engineering,"$40,000 a $60,000 por mes",2025-04-09 10:27:38,https://mx.indeed.com/viewjob?jk=dfe24e58ffbc7963
+7b7a2ddd380b59bd,Indeed,DevOps Engineer,STEFANINI LATAM,No especificado,2025-04-09 10:27:38,https://mx.indeed.com/viewjob?jk=7b7a2ddd380b59bd
+b4fb7926680fdb58,Indeed,DevOps Azure Engineer - TRABAJO REMOTO,U hi,"$80,000 a $85,000 por mes",2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=b4fb7926680fdb58
+dc4f71b0831e2f4a,Indeed,Ingeniero de plataformas - Trainee,ITT Head Hunter,"Desde $12,000 por mes",2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=dc4f71b0831e2f4a
+1611c7f630ac70f0,Indeed,Support Engineer AWS,The Cervantes Group,No especificado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=1611c7f630ac70f0
+accadd546d94b061,Indeed,DevOps Engineer - Remote inside México,Capgemini Engineering,"$60,000 a $72,000 por mes",2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=accadd546d94b061
+14eb5ce606644ade,Indeed,Cloud Engineer,Boombit,No especificado,2025-04-09 10:27:55,https://mx.indeed.com/viewjob?jk=14eb5ce606644ade
+11ca488bfcab1ca7,Indeed,AZURE DEVOPS,BOSON INTEL,"$80,000 a $85,000 por mes",2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=11ca488bfcab1ca7
+d91ac007fa59e872,Indeed,Senior DevOps Engineer,"EPAM Systems, Inc.",No especificado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=d91ac007fa59e872
+220e9c2228c9768b,Indeed,Arquitecto DevOps,Movit SG,"$90,000 a $95,000 por mes",2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=220e9c2228c9768b
+470603c5f89ff075,Indeed,Cloud Engineer,Boombit,No especificado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=470603c5f89ff075
+ba4a4ab8289ad8aa,Indeed,UI DevOps Engineer,Luxoft,No especificado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=ba4a4ab8289ad8aa
+8754d950283ea0b2,Indeed,"Senior DevOps Engineer (Azure, AI)",3Pillar,No especificado,2025-04-09 10:28:11,https://mx.indeed.com/viewjob?jk=8754d950283ea0b2
+2e7786a25527a76a,Indeed,Cloud Cost Engineer C1 Senior,Púrpura,"$50,000 a $70,000 por mes",2025-04-09 10:28:27,https://mx.indeed.com/viewjob?jk=2e7786a25527a76a
+20274210,OCC,Cloud FinOps Lead Consultant (REMOTE),NTT DATA SERVICES MEXI...,Sueldo no mostrado por la empresa,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20274210/
+20273636,OCC,Oracle Integration Cloud Technical Consultant,EY GDS CS MEXICO SC,"$50,000 - $60,000 Mensual",2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20273636/
+20273685,OCC,Consultants with expertise in Oracle EPM Cloud,EY GDS CS MEXICO SC,"$50,000 - $60,000 Mensual",2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20273685/
+20288345,OCC,Especialista en Migración (Citrix a AWS AppStream 2.0),Empresa confidencial,Sueldo no mostrado por la empresa,2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20288345/
+20287184,OCC,Técnico de Virtualización LINUX - REMOTO,echBusiness Operacione...,"$30,000 - $34,000 Mensual",2025-04-09 10:28:28,https://www.occ.com.mx/empleo/oferta/20287184/
+20278703,OCC,Linux Cloud Support Engineer- L2,CMS,"$44,000 Mensual",2025-04-09 10:28:38,https://www.occ.com.mx/empleo/oferta/20278703/
+20255786,OCC,Especialista en Aplicaciones con IA-NUBE,SC Empresarial,Sueldo no mostrado por la empresa,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20255786/
+20253950,OCC,Middle Site Reliability Engineer,Monterrey IT Cluster,"$50,000 - $65,000 Mensual",2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20253950/
+20256642,OCC,Consultor AWS,INGENIOSI FACILITADORA,Sueldo no mostrado por la empresa,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20256642/
+20250215,OCC,Cloud Architect AWS,Softtek,Sueldo no mostrado por la empresa,2025-04-09 10:28:49,https://www.occ.com.mx/empleo/oferta/20250215/
+341c72eb3b369616,Indeed,Especialista en migración (Citrix a AWS AppStream 2.0 ),Grupo Pissa S.A de C.V,"Desde $20,797.74 por mes",2025-04-09 10:29:06,https://mx.indeed.com/viewjob?jk=341c72eb3b369616
+116150bbf8dde2bd,Indeed,Ingeniero en Sistemas especialista en Veeam cloud connect,Coworking group cwg,"$45,000 a $60,000 por mes",2025-04-09 10:29:06,https://mx.indeed.com/viewjob?jk=116150bbf8dde2bd
+3e20531c8712d5d6,Indeed,Cloud & Automation Engineer - B,Praxis,"$90,000 a $95,000 por mes",2025-04-09 10:29:22,https://mx.indeed.com/viewjob?jk=3e20531c8712d5d6
+479ec3d4a9b9ce59,Indeed,Senior Site Reliability Engineer,"EPAM Systems, Inc.",No especificado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=479ec3d4a9b9ce59
+9e750b4246ec71ae,Indeed,IT Infrastructure Project Manager,The Cervantes Group,No especificado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=9e750b4246ec71ae
+34b4bd086c71f7f6,Indeed,Senior DevOps Engineer,"EPAM Systems, Inc.",No especificado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=34b4bd086c71f7f6
+dc13f3d8de529285,Indeed,Senior Site Reliability Engineer (CI/CD),Wizeline,No especificado,2025-04-09 10:31:16,https://mx.indeed.com/viewjob?jk=dc13f3d8de529285
+20257694,OCC,Infrastructure Architect,"AZKA IT CONSULTING, SA...","$75,000 - $85,000 Mensual",2025-04-09 10:33:39,https://www.occ.com.mx/empleo/oferta/20257694/
+4a5f04817443b4f1,Indeed,Release Manager,Genius™,No especificado,2025-04-09 10:35:11,https://mx.indeed.com/viewjob?jk=4a5f04817443b4f1
+d74bcf4fd4a7bec6,Indeed,Ingeniero de Sistemas N1,BLUE Technology,"$10,000 a $12,000 por mes",2025-04-09 19:40:59,https://mx.indeed.com/viewjob?jk=d74bcf4fd4a7bec6
+37e44457c6ca9de3,Indeed,Senior Site Reliability Engineer,"EPAM Systems, Inc.",No especificado,2025-04-09 19:40:59,https://mx.indeed.com/viewjob?jk=37e44457c6ca9de3
+62ddacc0fd1df153,Indeed,Lead Site Reliability Engineer,"EPAM Systems, Inc.",No especificado,2025-04-09 19:40:59,https://mx.indeed.com/viewjob?jk=62ddacc0fd1df153

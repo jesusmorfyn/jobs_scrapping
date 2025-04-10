@@ -16,44 +16,29 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 # --- Configuración General ---
-OUTPUT_FILENAME = "all_remote_jobs.csv" # NUEVO: Nombre unificado
-EXPECTED_COLUMNS = ['job_id', 'platform', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link'] # NUEVO: Añadir 'platform'
+OUTPUT_FILENAME = "all_remote_jobs.csv"
+# MODIFICADO: Lista para asegurar consistencia al leer/combinar, pero NO es la lista final a guardar
+EXPECTED_COLUMNS = ['job_id', 'platform', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
 # --- Configuración Específica ---
-# OCC
-BASE_URL_OCC = "https://www.occ.com.mx/empleos/de-{keyword}/tipo-home-office-remoto/?sort=2" # Sin &tm
-# Indeed
-BASE_URL_INDEED = "https://mx.indeed.com/jobs?q={keyword}&l=Remote&sc=0kf%3Aattr%28DSQF7%29%3B&sort=date&start={start}" # Sin &fromage
+BASE_URL_OCC = "https://www.occ.com.mx/empleos/de-{keyword}/tipo-home-office-remoto/?sort=2"
+BASE_URL_INDEED = "https://mx.indeed.com/jobs?q={keyword}&l=Remote&sc=0kf%3Aattr%28DSQF7%29%3B&sort=date&start={start}"
 INDEED_PAGE_INCREMENT = 10
 
 # --- Palabras a buscar ---
 SEARCH_KEYWORDS = [
-    "devops",
-    "cloud",
-    "aws",
-    "gcp",
-    "site reliability engineer", # Ajustado para URL (Indeed puede necesitar '+')
-    "mlops",
-    "platform engineer" # Comentado
-    # "sre", # Comentado en tus ejemplos
-    # "infrastructure", # Comentado
-    # "automation",     # Comentado
-    # "ci/cd", # Ajustado para URL
-    # "kubernetes",
-    # "docker",         # Comentado
-    # "terraform",      # Comentado
-    # "ansible",        # Comentado
+    "devops", "cloud", "aws", "gcp", "site reliability engineer", "mlops", "platform engineer"
 ]
 
 # --- Filtros de Título (Comunes) ---
 EXCLUDE_TITLE_KEYWORDS = [
-    "software", "development", "data", ".net", "python", "quality", "security", "seguridad", "developer"
+    "software", "development", "data", ".net", "python", "quality", "security", "seguridad", "developer",
     "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap", "hibrido",
-    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida"
+    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida", "oracle"
 ]
 INCLUDE_TITLE_KEYWORDS = [
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
@@ -61,7 +46,7 @@ INCLUDE_TITLE_KEYWORDS = [
     "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
     "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native",
     "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
-    "orquestación", "virtualización", "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef", 
+    "orquestación", "virtualización", "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef",
     "openstack", "infrastructure as code", "iac", "configuración como código", "prometheus", "grafana",
     "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
     "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad",
@@ -71,12 +56,13 @@ INCLUDE_TITLE_KEYWORDS = [
 ]
 
 # --- Tiempos ---
-DELAY_BETWEEN_KEYWORDS = 10     # Pausa entre diferentes palabras clave
+DELAY_BETWEEN_KEYWORDS = 10
 RETRY_DELAY = 10
 REQUEST_TIMEOUT_OCC = 30
 REQUEST_TIMEOUT_INDEED = 60
 
 # --- Funciones Selenium (Indeed) ---
+# setup_driver y close_cookie_popup (sin cambios)
 def setup_driver():
     print("Conectando a la instancia de Chrome en modo depuración remota...")
     chrome_options = ChromeOptions()
@@ -87,11 +73,10 @@ def setup_driver():
         return driver
     except Exception as e:
         print(f"Error al conectar con la instancia remota de Chrome: {e}")
-        # Considerar no salir, sino devolver None y manejarlo
-        return None # MODIFICADO: Devolver None en lugar de salir
+        return None
 
 def close_cookie_popup(driver, wait_short):
-    if not driver: return # No hacer nada si no hay driver
+    if not driver: return
     try:
         xpath_accept = "//button[contains(translate(., 'ACEPTAR COOKIES', 'aceptar cookies'), 'aceptar cookies') or contains(translate(., 'ACCEPT', 'accept'), 'accept') or contains(translate(., 'ENTENDIDO', 'entendido'), 'entendido')]"
         cookie_button = wait_short.until(EC.element_to_be_clickable((By.XPATH, xpath_accept)))
@@ -104,10 +89,10 @@ def close_cookie_popup(driver, wait_short):
         print(f"Error al intentar cerrar pop-up de cookies (Indeed): {e}")
 
 # --- Funciones de Parseo Específicas ---
-
+# get_total_results_occ, parse_job_card_occ, parse_job_card_indeed
+# (Sin cambios en estas funciones, siguen extrayendo location y posted_date internamente)
 def get_total_results_occ(soup):
     """Intenta extraer el número total de resultados de la página de OCC."""
-    # ... (código idéntico a tu get_total_results original) ...
     try:
         sort_div = soup.find('div', id='sort-jobs')
         if sort_div:
@@ -115,17 +100,14 @@ def get_total_results_occ(soup):
             if results_p_specific and 'resultados' in results_p_specific.get_text():
                 match = re.search(r'(\d{1,3}(?:,\d{3})*|\d+)', results_p_specific.get_text().replace(',', ''))
                 if match: return int(match.group(1))
-
         results_p_general = soup.find('p', string=re.compile(r'\d{1,3}(?:,\d{3})*|\d+\s+resultados'))
         if results_p_general:
             match = re.search(r'(\d{1,3}(?:,\d{3})*|\d+)', results_p_general.get_text().replace(',', ''))
             if match: return int(match.group(1))
-
         results_p_alt = soup.find('p', class_='text-sm font-light')
         if results_p_alt and 'resultados' in results_p_alt.get_text():
              match = re.search(r'(\d{1,3}(?:,\d{3})*|\d+)', results_p_alt.get_text().replace(',', ''))
              if match: return int(match.group(1))
-
         print("Advertencia (OCC): No se pudo determinar el número total de resultados.")
         return 0
     except Exception as e:
@@ -134,16 +116,13 @@ def get_total_results_occ(soup):
 
 def parse_job_card_occ(card_soup):
     """Extrae info de una tarjeta OCC."""
-    # ... (código idéntico a tu parse_job_card original) ...
     job_data = {}
     job_id_num = None
     try:
         card_id = card_soup.get('id')
         if card_id and card_id.startswith('jobcard-'):
              match_id = re.search(r'\d+$', card_id)
-             if match_id:
-                 job_id_num = match_id.group(0)
-                 job_data['job_id'] = str(job_id_num)
+             if match_id: job_data['job_id'] = str(match_id.group(0))
              else: job_data['job_id'] = None
         else: job_data['job_id'] = None
 
@@ -154,6 +133,8 @@ def parse_job_card_occ(card_soup):
         job_data['salary'] = salary_tag.get_text(strip=True) if salary_tag else "No especificado"
 
         company_section = card_soup.find('div', class_='flex flex-row justify-between items-center')
+        job_data['company'] = "No especificado" # Default
+        # job_data['location'] = "No especificado" # Default - Comentado, no se guarda
         if company_section:
             company_container_outer = company_section.find('div', class_='flex flex-col')
             if company_container_outer:
@@ -175,21 +156,18 @@ def parse_job_card_occ(card_soup):
                         inner_span = target_container.find('span')
                         if inner_span and "Empresa confidencial" in inner_span.get_text(strip=True): job_data['company'] = "Empresa confidencial"
                         elif inner_span: job_data['company'] = inner_span.get_text(strip=True) or "No especificado"
-                        else: job_data['company'] = "No especificado"
 
-                 location_tag = target_container.find_next_sibling('div', class_='no-alter-loc-text')
-                 if not location_tag: location_tag = company_container_outer.find('div', class_='no-alter-loc-text')
-                 if location_tag:
-                     location_parts = [elem.get_text(strip=True) for elem in location_tag.find_all(['span', 'a']) if elem.get_text(strip=True)]
-                     job_data['location'] = ', '.join(filter(None, location_parts)) if location_parts else "Remoto/No especificado"
-                 else: job_data['location'] = "Remoto/No especificado"
-            else: job_data['company'], job_data['location'] = "No especificado", "No especificado"
-        else: job_data['company'], job_data['location'] = "No especificado", "No especificado"
+                 # location_tag = target_container.find_next_sibling('div', class_='no-alter-loc-text') # Comentado
+                 # if not location_tag: location_tag = company_container_outer.find('div', class_='no-alter-loc-text')
+                 # if location_tag:
+                 #     location_parts = [elem.get_text(strip=True) for elem in location_tag.find_all(['span', 'a']) if elem.get_text(strip=True)]
+                 #     job_data['location'] = ', '.join(filter(None, location_parts)) if location_parts else "Remoto/No especificado"
+                 # else: job_data['location'] = "Remoto/No especificado"
 
-        date_tag = card_soup.find('label', class_='text-sm')
-        job_data['posted_date'] = date_tag.get_text(strip=True) if date_tag else None
+        # date_tag = card_soup.find('label', class_='text-sm') # Comentado
+        # job_data['posted_date'] = date_tag.get_text(strip=True) if date_tag else None
 
-        if job_id_num: job_data['link'] = f"https://www.occ.com.mx/empleo/oferta/{job_id_num}/"
+        if job_data.get('job_id'): job_data['link'] = f"https://www.occ.com.mx/empleo/oferta/{job_data['job_id']}/"
         else: job_data['link'] = "No encontrado (sin ID)"
 
         return job_data if job_data.get('title') and job_data.get('job_id') else None
@@ -201,7 +179,6 @@ def parse_job_card_occ(card_soup):
 
 def parse_job_card_indeed(card_soup):
     """Extrae info de una tarjeta Indeed."""
-    # ... (código idéntico a tu parse_job_card de Indeed original) ...
     job_data = {}
     job_id = None
     try:
@@ -222,8 +199,8 @@ def parse_job_card_indeed(card_soup):
         company_tag = card_soup.find('span', {'data-testid': 'company-name'})
         job_data['company'] = company_tag.get_text(strip=True) if company_tag else "No especificado"
 
-        location_tag = card_soup.find('div', {'data-testid': 'text-location'})
-        job_data['location'] = location_tag.get_text(strip=True) if location_tag else "No especificado"
+        # location_tag = card_soup.find('div', {'data-testid': 'text-location'}) # Comentado
+        # job_data['location'] = location_tag.get_text(strip=True) if location_tag else "No especificado"
 
         salary_data = "No especificado"
         salary_tag_testid = card_soup.find('div', {'data-testid': 'attribute_snippet_testid'}, class_='salary-snippet-container')
@@ -238,20 +215,20 @@ def parse_job_card_indeed(card_soup):
                           salary_data = div.get_text(strip=True); break
         job_data['salary'] = salary_data
 
-        posted_date_data = "No encontrado"
-        date_tag_relative = card_soup.find('span', class_='date')
-        if date_tag_relative: posted_date_data = date_tag_relative.get_text(strip=True)
-        else:
-            metadata_container_date = card_soup.find('div', class_='jobMetaDataGroup')
-            if metadata_container_date:
-                possible_dates = metadata_container_date.find_all(['span', 'div'])
-                for tag in possible_dates:
-                     text = tag.get_text(strip=True).lower()
-                     if re.search(r'\b(hace|posted|publicado)\b.*\b(d[íi]a|hora|semana|day|hour|week)s?\b', text, re.IGNORECASE) or \
-                        re.match(r'\d+\+?\s+(d[íi]as?|days?)\s+ago', text, re.IGNORECASE) or \
-                        re.search(r'\b(today|ayer)\b', text, re.IGNORECASE):
-                          posted_date_data = tag.get_text(strip=True); break
-        job_data['posted_date'] = posted_date_data
+        # posted_date_data = "No encontrado" # Comentado
+        # date_tag_relative = card_soup.find('span', class_='date')
+        # if date_tag_relative: posted_date_data = date_tag_relative.get_text(strip=True)
+        # else:
+        #     metadata_container_date = card_soup.find('div', class_='jobMetaDataGroup')
+        #     if metadata_container_date:
+        #         possible_dates = metadata_container_date.find_all(['span', 'div'])
+        #         for tag in possible_dates:
+        #              text = tag.get_text(strip=True).lower()
+        #              if re.search(r'\b(hace|posted|publicado)\b.*\b(d[íi]a|hora|semana|day|hour|week)s?\b', text, re.IGNORECASE) or \
+        #                 re.match(r'\d+\+?\s+(d[íi]as?|days?)\s+ago', text, re.IGNORECASE) or \
+        #                 re.search(r'\b(today|ayer)\b', text, re.IGNORECASE):
+        #                   posted_date_data = tag.get_text(strip=True); break
+        # job_data['posted_date'] = posted_date_data
 
         job_data['link'] = f"https://mx.indeed.com/viewjob?jk={job_id}"
 
@@ -268,7 +245,8 @@ def parse_job_card_indeed(card_soup):
         return None
 
 # --- Funciones Principales de Scraping ---
-
+# (scrape_occ_for_keyword y scrape_indeed_for_keyword sin cambios,
+#  ya que los cambios se hacen en el parseo y al guardar)
 def scrape_occ_for_keyword(keyword, tm_param, found_job_ids):
     """Busca en OCC para una keyword y rango de tiempo dados."""
     print(f"\n--- Iniciando OCC para '{keyword}' (tm={tm_param}) ---")
@@ -312,7 +290,7 @@ def scrape_occ_for_keyword(keyword, tm_param, found_job_ids):
             found_on_page, skipped_duplicates_page, skipped_excluded_page, skipped_inclusion_page = 0, 0, 0, 0
 
             for card in job_cards:
-                job_info = parse_job_card_occ(card)
+                job_info = parse_job_card_occ(card) # <<< USA LA FUNCIÓN DE PARSEO ACTUALIZADA
                 if job_info:
                     job_id = job_info.get('job_id')
                     job_title = job_info.get('title', '')
@@ -320,7 +298,6 @@ def scrape_occ_for_keyword(keyword, tm_param, found_job_ids):
 
                     excluded = any(ex_word in job_title_lower for ex_word in EXCLUDE_TITLE_KEYWORDS)
                     if excluded:
-                        # Encontrar la palabra que causó la exclusión
                         reason = next((ex_word for ex_word in EXCLUDE_TITLE_KEYWORDS if ex_word in job_title_lower), "?")
                         processed_titles['excluded_explicit'].append(f"{job_title} (Excl: {reason})")
                         skipped_excluded_page += 1
@@ -335,9 +312,9 @@ def scrape_occ_for_keyword(keyword, tm_param, found_job_ids):
                     if included and job_id and job_id not in found_job_ids:
                         timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         job_info['timestamp_found'] = timestamp_str
-                        job_info['platform'] = 'OCC' # Añadir plataforma
+                        job_info['platform'] = 'OCC'
                         new_jobs_occ.append(job_info)
-                        found_job_ids.add(job_id) # ¡IMPORTANTE: Actualizar el set global!
+                        found_job_ids.add(job_id)
                         found_on_page += 1
                         processed_titles['included'].append(job_title)
                     elif included and job_id:
@@ -350,7 +327,7 @@ def scrape_occ_for_keyword(keyword, tm_param, found_job_ids):
 
             if page >= max_pages: break
             page += 1
-            time.sleep(DELAY_BETWEEN_KEYWORDS)
+            time.sleep(DELAY_BETWEEN_KEYWORDS) # Usamos el delay entre keywords como delay entre páginas aquí
 
         except requests.exceptions.Timeout:
              print(f"    OCC: Timeout en página {page}. Reintentando...")
@@ -364,12 +341,12 @@ def scrape_occ_for_keyword(keyword, tm_param, found_job_ids):
             break
 
     print(f"--- Fin OCC para '{keyword}'. Total nuevas: {total_added} ---")
-    return new_jobs_occ, processed_titles # Devolver también los títulos procesados
+    return new_jobs_occ, processed_titles
 
 def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
     """Busca en Indeed usando Selenium para una keyword y rango de tiempo."""
     if not driver:
-        print("\n--- Skipping Indeed para '{keyword}' (Driver no disponible) ---")
+        print(f"\n--- Skipping Indeed para '{keyword}' (Driver no disponible) ---")
         return [], {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
 
     print(f"\n--- Iniciando Indeed para '{keyword}' (fromage={fromage_param}) ---")
@@ -382,7 +359,7 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
     total_added = 0
     keep_paging = True
     wait_long = WebDriverWait(driver, REQUEST_TIMEOUT_INDEED)
-    wait_short = WebDriverWait(driver, 3) # Espera corta para popups y chequeo rápido
+    wait_short = WebDriverWait(driver, 3)
 
     while keep_paging:
         start_index = (page - 1) * INDEED_PAGE_INCREMENT
@@ -393,34 +370,29 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
             driver.get(current_url)
             close_cookie_popup(driver, wait_short)
 
-            # Chequeo Rápido "Sin Resultados"
-            try:
+            try: # Chequeo rápido sin resultados
                 no_results_xpath = "//*[contains(text(), 'no produjo ningún resultado') or contains(text(), 'did not match any jobs')]"
                 WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, "//*")))
                 if driver.find_elements(By.XPATH, no_results_xpath):
                     print(f"    Indeed: Detectado 'Sin resultados'.")
-                    break # Salir del while para esta keyword
-
-            except TimeoutException: pass # Normal si no hay mensaje
+                    break
+            except TimeoutException: pass
             except Exception as e_nores: print(f"    Indeed: Advertencia menor buscando 'sin resultados': {e_nores}")
 
-            # Espera principal por las tarjetas
-            try:
+            try: # Espera principal
                 wait_long.until(EC.presence_of_element_located((By.ID, "mosaic-provider-jobcards")))
                 wait_long.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "div#mosaic-provider-jobcards li div.cardOutline")))
-                time.sleep(2) # Pausa extra
+                time.sleep(2)
             except TimeoutException:
                 print(f"    Indeed: Timeout esperando tarjetas en página {page}.")
                 try: driver.save_screenshot(f"debug_indeed_timeout_p{page}_{keyword}.png")
                 except: pass
                 if page == 1: print(f"    Indeed: Error cargando resultados iniciales. Abortando Indeed para '{keyword}'.")
                 else: print(f"    Indeed: Asumiendo fin de resultados.")
-                keep_paging = False
-                continue
+                keep_paging = False; continue
             except Exception as e_wait:
                  print(f"    Indeed: Error esperando elementos en página {page}: {e_wait}. Abortando Indeed para '{keyword}'.")
-                 keep_paging = False
-                 continue
+                 keep_paging = False; continue
 
             page_html = driver.page_source
             soup = BeautifulSoup(page_html, 'lxml')
@@ -428,17 +400,13 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
             job_cards_li = []
             if job_list_container_soup:
                 ul_list = job_list_container_soup.find('ul', class_='css-1faftfv') or job_list_container_soup.find('ul')
-                if ul_list:
-                    job_cards_li = [li for li in ul_list.find_all('li', recursive=False) if li.find('div', class_='cardOutline')]
+                if ul_list: job_cards_li = [li for li in ul_list.find_all('li', recursive=False) if li.find('div', class_='cardOutline')]
             else: print("    Indeed: Advertencia - Contenedor de tarjetas no encontrado en HTML.")
-
-            current_page_job_count = len(job_cards_li)
-            # print(f"    Indeed: {current_page_job_count} tarjetas encontradas en HTML.") # Debug
 
             found_on_page, skipped_duplicates_page, skipped_excluded_page, skipped_inclusion_page = 0, 0, 0, 0
 
             for card_li in job_cards_li:
-                 job_info = parse_job_card_indeed(card_li)
+                 job_info = parse_job_card_indeed(card_li) # <<< USA LA FUNCIÓN DE PARSEO ACTUALIZADA
                  if job_info:
                     job_id = job_info.get('job_id')
                     job_title = job_info.get('title', '')
@@ -460,9 +428,9 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
                     if included and job_id and job_id not in found_job_ids:
                         timestamp_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         job_info['timestamp_found'] = timestamp_str
-                        job_info['platform'] = 'Indeed' # Añadir plataforma
+                        job_info['platform'] = 'Indeed'
                         new_jobs_indeed.append(job_info)
-                        found_job_ids.add(job_id) # ¡IMPORTANTE: Actualizar el set global!
+                        found_job_ids.add(job_id)
                         found_on_page += 1
                         processed_titles['included'].append(job_title)
                     elif included and job_id:
@@ -473,8 +441,7 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
             skipped_inclusion_fail_total += skipped_inclusion_page
             total_added += found_on_page
 
-            # Comprobar paginación de Indeed
-            try:
+            try: # Comprobar paginación
                 if not driver.find_elements(By.CSS_SELECTOR, "a[data-testid='pagination-page-next']"):
                      print(f"    Indeed: No se encontró enlace 'Siguiente'. Fin para '{keyword}'.")
                      keep_paging = False
@@ -484,16 +451,14 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
 
             if keep_paging:
                  page += 1
-                 time.sleep(DELAY_BETWEEN_KEYWORDS)
+                 time.sleep(DELAY_BETWEEN_KEYWORDS) # Usamos el delay entre keywords como delay entre páginas
 
         except TimeoutException:
              print(f"    Indeed: Timeout general en página {page}. Abortando Indeed para '{keyword}'.")
              keep_paging = False
         except WebDriverException as e:
              print(f"    Indeed: Error de WebDriver en página {page}: {e}. Abortando Indeed para '{keyword}'.")
-             keep_paging = False
-             # Si el driver falla, probablemente no podamos continuar
-             raise e # Re-lanzar para que el bloque try/except exterior lo capture
+             keep_paging = False; raise e
         except Exception as e:
             print(f"    Indeed: Error general en página {page}: {e}. Abortando Indeed para '{keyword}'.")
             keep_paging = False
@@ -501,9 +466,11 @@ def scrape_indeed_for_keyword(driver, keyword, fromage_param, found_job_ids):
     print(f"--- Fin Indeed para '{keyword}'. Total nuevas: {total_added} ---")
     return new_jobs_indeed, processed_titles
 
+
 # --- Script Principal ---
 
 # 1. Cargar datos existentes y determinar fecha
+# ... (Sin cambios en esta sección) ...
 existing_df = pd.DataFrame()
 found_job_ids = set()
 last_run_time = None
@@ -512,11 +479,12 @@ if os.path.exists(OUTPUT_FILENAME):
     print(f"Cargando datos existentes desde '{OUTPUT_FILENAME}'...")
     try:
         existing_df = pd.read_csv(OUTPUT_FILENAME)
+        # Usar EXPECTED_COLUMNS para asegurar compatibilidad con archivos viejos
         for col in EXPECTED_COLUMNS:
             if col not in existing_df.columns:
                 existing_df[col] = pd.NA
         if 'job_id' in existing_df.columns:
-            existing_df['job_id'] = existing_df['job_id'].astype(str) # Asegurar string
+            existing_df['job_id'] = existing_df['job_id'].astype(str)
             found_job_ids = set(existing_df['job_id'].dropna().tolist())
             print(f"Se cargaron {len(found_job_ids)} IDs existentes.")
         else:
@@ -534,62 +502,57 @@ if os.path.exists(OUTPUT_FILENAME):
                 last_run_time = None
     except pd.errors.EmptyDataError:
         print("El archivo CSV existente está vacío.")
-        existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS)
+        existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS) # Usar la lista completa aquí
     except Exception as e:
         print(f"Error al leer el archivo CSV existente: {e}. Se procederá como si no existiera.")
-        existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS)
+        existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS) # Usar la lista completa aquí
         found_job_ids = set()
 else:
     print(f"El archivo '{OUTPUT_FILENAME}' no existe. Se creará uno nuevo.")
-    existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS)
+    existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS) # Usar la lista completa aquí
 
 # Calcular parámetros de fecha
 tm_param_occ = 14
 fromage_param_indeed = 14
-
 if last_run_time:
     time_diff = datetime.now() - last_run_time
     days_diff = time_diff.days
     print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
-    # OCC
     if days_diff <= 2: tm_param_occ = 3
     elif days_diff <= 7: tm_param_occ = 7
-    # Indeed
     if days_diff <= 1: fromage_param_indeed = 1
     elif days_diff <= 3: fromage_param_indeed = 3
     elif days_diff <= 7: fromage_param_indeed = 7
-else:
-    print("No se encontró fecha de última ejecución en CSV. Usando defaults (14 días).")
-
+else: print("No se encontró fecha de última ejecución en CSV. Usando defaults (14 días).")
 print(f"Parámetros de búsqueda: tm={tm_param_occ} (OCC), fromage={fromage_param_indeed} (Indeed)")
 
 # Inicializar listas y contadores globales
 all_new_jobs = []
 all_processed_titles = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
 
-# --- Inicializar Driver para Indeed ---
-driver = setup_driver() # Intentar conectar
+# Inicializar Driver para Indeed
+driver = setup_driver()
 
 print("\n======= INICIANDO SCRAPING COMBINADO =======")
 
-# --- Bucle Principal por Keyword ---
+# Bucle Principal por Keyword
 try:
     for i, keyword_raw in enumerate(SEARCH_KEYWORDS):
         print(f"\n==================== Keyword {i+1}/{len(SEARCH_KEYWORDS)}: '{keyword_raw}' ====================")
+        keyword_occ = keyword_raw.replace(' ', '-')
+        keyword_indeed = keyword_raw.replace(' ', '+')
 
-        # Preparar keyword para URLs (manejar '+' y espacios)
-        keyword_occ = keyword_raw.replace(' ', '-') # OCC usa '-'
-        keyword_indeed = keyword_raw.replace(' ', '+') # Indeed usa '+'
-
-        # Scrape OCC
         new_jobs_occ, titles_occ = scrape_occ_for_keyword(keyword_occ, tm_param_occ, found_job_ids)
         all_new_jobs.extend(new_jobs_occ)
         for key in all_processed_titles: all_processed_titles[key].extend(titles_occ[key])
 
-        # Scrape Indeed
         new_jobs_indeed, titles_indeed = scrape_indeed_for_keyword(driver, keyword_indeed, fromage_param_indeed, found_job_ids)
         all_new_jobs.extend(new_jobs_indeed)
         for key in all_processed_titles: all_processed_titles[key].extend(titles_indeed[key])
+
+        if i < len(SEARCH_KEYWORDS) - 1:
+            print(f"\nEsperando {DELAY_BETWEEN_KEYWORDS} segundos antes de la siguiente keyword...")
+            time.sleep(DELAY_BETWEEN_KEYWORDS)
 
 except WebDriverException as e_wd_global:
     print(f"\nERROR CRÍTICO DE WEBDRIVER: {e_wd_global}")
@@ -598,15 +561,12 @@ except Exception as e_global:
     print(f"\nERROR GLOBAL INESPERADO: {e_global}")
     print("El scraping se detuvo. Se intentará guardar los resultados obtenidos hasta ahora.")
 finally:
-    # Cerrar conexión Selenium (si se estableció)
     if driver:
         print("\nCerrando conexión con WebDriver remoto...")
-        # No usamos driver.quit() para no cerrar el navegador manual
         print("WebDriver remoto sigue conectado. Ciérralo manualmente si es necesario.")
 
 # --- 3. Combinar y Guardar Resultados ---
 print("\n======= PROCESANDO RESULTADOS FINALES (Combinado) =======")
-
 print("\n--- Reporte de Títulos Procesados (Total) ---")
 print(f"Total Incluidos: {len(all_processed_titles['included'])}")
 print(f"Total Excluidos (explícito): {len(all_processed_titles['excluded_explicit'])}")
@@ -615,27 +575,25 @@ print(f"Total Excluidos (implícito): {len(all_processed_titles.get('excluded_im
 if all_new_jobs:
     print(f"\nSe encontraron {len(all_new_jobs)} ofertas nuevas en total durante esta ejecución.")
     new_df = pd.DataFrame(all_new_jobs)
-    if 'job_id' not in new_df.columns: new_df['job_id'] = pd.NA # Asegurar columna
+    if 'job_id' not in new_df.columns: new_df['job_id'] = pd.NA
 
     if not existing_df.empty:
         print(f"Combinando {len(new_df)} nuevos con {len(existing_df)} existentes.")
+        # Usar la lista completa para asegurar compatibilidad al combinar
         all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(EXPECTED_COLUMNS))
         new_df = new_df.reindex(columns=all_cols)
         existing_df = existing_df.reindex(columns=all_cols)
         combined_df = pd.concat([existing_df, new_df], ignore_index=True)
     else:
         print("No había datos existentes, guardando solo los nuevos.")
-        # Asegurar que el nuevo DF tenga todas las columnas esperadas
         all_cols = list(set(new_df.columns) | set(EXPECTED_COLUMNS))
         combined_df = new_df.reindex(columns=all_cols)
 
-
     initial_rows = len(combined_df)
     if 'job_id' in combined_df.columns:
-         combined_df['job_id'] = combined_df['job_id'].astype(str) # Asegurar string para drop_duplicates
-         # Asegurarse que no haya NaNs o NAs en job_id antes de dropear
+         combined_df['job_id'] = combined_df['job_id'].astype(str)
          combined_df.dropna(subset=['job_id'], inplace=True)
-         combined_df = combined_df[combined_df['job_id'] != 'None'] # Quitar 'None' como string si existe
+         combined_df = combined_df[combined_df['job_id'] != 'None']
          combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
          final_rows = len(combined_df)
          if initial_rows > final_rows:
@@ -644,10 +602,21 @@ if all_new_jobs:
          print("Advertencia: No se pudo realizar la deduplicación final por falta de columna 'job_id'.")
 
     try:
-        # Reordenar columnas según EXPECTED_COLUMNS
-        combined_df = combined_df[EXPECTED_COLUMNS]
-        combined_df.to_csv(OUTPUT_FILENAME, index=False, encoding='utf-8-sig')
-        print(f"\nDatos combinados guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df)} ofertas en total).")
+        # --- MODIFICADO: Definir aquí las columnas finales a guardar ---
+        final_columns_order = ['job_id', 'platform', 'title', 'company', 'salary', 'timestamp_found', 'link']
+
+        # Asegurar que estas columnas finales existan
+        for col in final_columns_order:
+            if col not in combined_df.columns:
+                combined_df[col] = pd.NA # Añadir si falta
+
+        # Seleccionar y reordenar SOLO las columnas finales para guardar
+        combined_df_to_save = combined_df[final_columns_order]
+
+        combined_df_to_save.to_csv(OUTPUT_FILENAME, index=False, encoding='utf-8-sig')
+        print(f"\nDatos combinados (columnas seleccionadas) guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df_to_save)} ofertas en total).")
+        # --- FIN MODIFICADO ---
+
     except Exception as e:
         print(f"\nError al guardar el archivo CSV final: {e}")
 
