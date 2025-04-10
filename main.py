@@ -17,8 +17,8 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 # --- Configuración General ---
 OUTPUT_FILENAME = "all_remote_jobs.csv"
-# MODIFICADO: Lista para asegurar consistencia al leer/combinar, pero NO es la lista final a guardar
-EXPECTED_COLUMNS = ['job_id', 'platform', 'title', 'company', 'salary', 'location', 'posted_date', 'timestamp_found', 'link']
+# Lista final de columnas a guardar
+FINAL_COLUMNS_TO_SAVE = ['job_id', 'platform', 'title', 'company', 'salary', 'timestamp_found', 'link']
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -479,8 +479,8 @@ if os.path.exists(OUTPUT_FILENAME):
     print(f"Cargando datos existentes desde '{OUTPUT_FILENAME}'...")
     try:
         existing_df = pd.read_csv(OUTPUT_FILENAME)
-        # Usar EXPECTED_COLUMNS para asegurar compatibilidad con archivos viejos
-        for col in EXPECTED_COLUMNS:
+        # Usar FINAL_COLUMNS_TO_SAVE para asegurar compatibilidad con archivos viejos
+        for col in FINAL_COLUMNS_TO_SAVE:
             if col not in existing_df.columns:
                 existing_df[col] = pd.NA
         if 'job_id' in existing_df.columns:
@@ -502,28 +502,25 @@ if os.path.exists(OUTPUT_FILENAME):
                 last_run_time = None
     except pd.errors.EmptyDataError:
         print("El archivo CSV existente está vacío.")
-        existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS) # Usar la lista completa aquí
+        existing_df = pd.DataFrame(columns=FINAL_COLUMNS_TO_SAVE) # Usar la lista completa aquí
     except Exception as e:
         print(f"Error al leer el archivo CSV existente: {e}. Se procederá como si no existiera.")
-        existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS) # Usar la lista completa aquí
+        existing_df = pd.DataFrame(columns=FINAL_COLUMNS_TO_SAVE) # Usar la lista completa aquí
         found_job_ids = set()
 else:
     print(f"El archivo '{OUTPUT_FILENAME}' no existe. Se creará uno nuevo.")
-    existing_df = pd.DataFrame(columns=EXPECTED_COLUMNS) # Usar la lista completa aquí
+    existing_df = pd.DataFrame(columns=FINAL_COLUMNS_TO_SAVE) # Usar la lista completa aquí
 
 # Calcular parámetros de fecha
-tm_param_occ = 14
-fromage_param_indeed = 14
+tm_param_occ = 7
+fromage_param_indeed = 7
 if last_run_time:
     time_diff = datetime.now() - last_run_time
     days_diff = time_diff.days
     print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
-    if days_diff <= 2: tm_param_occ = 3
-    elif days_diff <= 7: tm_param_occ = 7
-    if days_diff <= 1: fromage_param_indeed = 1
-    elif days_diff <= 3: fromage_param_indeed = 3
-    elif days_diff <= 7: fromage_param_indeed = 7
-else: print("No se encontró fecha de última ejecución en CSV. Usando defaults (14 días).")
+    if days_diff <= 3: tm_param_occ = 3
+    if days_diff <= 3: fromage_param_indeed = 3
+else: print("No se encontró fecha de última ejecución en CSV. Usando defaults (7 días).")
 print(f"Parámetros de búsqueda: tm={tm_param_occ} (OCC), fromage={fromage_param_indeed} (Indeed)")
 
 # Inicializar listas y contadores globales
@@ -580,13 +577,13 @@ if all_new_jobs:
     if not existing_df.empty:
         print(f"Combinando {len(new_df)} nuevos con {len(existing_df)} existentes.")
         # Usar la lista completa para asegurar compatibilidad al combinar
-        all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(EXPECTED_COLUMNS))
+        all_cols = list(set(new_df.columns) | set(existing_df.columns) | set(FINAL_COLUMNS_TO_SAVE))
         new_df = new_df.reindex(columns=all_cols)
         existing_df = existing_df.reindex(columns=all_cols)
         combined_df = pd.concat([existing_df, new_df], ignore_index=True)
     else:
         print("No había datos existentes, guardando solo los nuevos.")
-        all_cols = list(set(new_df.columns) | set(EXPECTED_COLUMNS))
+        all_cols = list(set(new_df.columns) | set(FINAL_COLUMNS_TO_SAVE))
         combined_df = new_df.reindex(columns=all_cols)
 
     initial_rows = len(combined_df)
@@ -602,16 +599,13 @@ if all_new_jobs:
          print("Advertencia: No se pudo realizar la deduplicación final por falta de columna 'job_id'.")
 
     try:
-        # --- MODIFICADO: Definir aquí las columnas finales a guardar ---
-        final_columns_order = ['job_id', 'platform', 'title', 'company', 'salary', 'timestamp_found', 'link']
-
         # Asegurar que estas columnas finales existan
-        for col in final_columns_order:
+        for col in FINAL_COLUMNS_TO_SAVE:
             if col not in combined_df.columns:
                 combined_df[col] = pd.NA # Añadir si falta
 
         # Seleccionar y reordenar SOLO las columnas finales para guardar
-        combined_df_to_save = combined_df[final_columns_order]
+        combined_df_to_save = combined_df[FINAL_COLUMNS_TO_SAVE]
 
         combined_df_to_save.to_csv(OUTPUT_FILENAME, index=False, encoding='utf-8-sig')
         print(f"\nDatos combinados (columnas seleccionadas) guardados exitosamente en '{OUTPUT_FILENAME}' ({len(combined_df_to_save)} ofertas en total).")
