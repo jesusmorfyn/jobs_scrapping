@@ -5,7 +5,7 @@ import math
 import re
 import pandas as pd
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # --- Selenium Imports (Solo para Indeed) ---
 from selenium import webdriver
@@ -31,28 +31,33 @@ INDEED_PAGE_INCREMENT = 10
 
 # --- Palabras a buscar ---
 SEARCH_KEYWORDS = [
-    "devops", "cloud", "aws", "gcp", "site reliability engineer", "mlops", "platform engineer"
+    # "data", "datos",
+    "aws", "gcp", "azure", "cloud", 
+    "devops", "sre", "site reliability"
 ]
 
 # --- Filtros de Título (Comunes) ---
 EXCLUDE_TITLE_KEYWORDS = [
-    "software", "development", "data", ".net", "python", "quality", "security", "seguridad", "developer",
-    "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap", "hibrido",
-    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida", "oracle"
+    "software", "development", ".net", "python", "quality", "security", "seguridad", "developer",
+    "salesforce", "saleforce", "desarroll", "qa", "ruby", "test", "java", "fullstack", "sap", "hibrido",
+    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida", "oracle", "full stack", "sales",
+    "data", "datos"
 ]
 INCLUDE_TITLE_KEYWORDS = [
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
-    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "nube",
+    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "nube", "inteligencia",
     "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
-    "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native",
+    "aws", "azure", "gcp", "google cloud", "amazon web", "cloud native", "intelligence",
     "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
     "orquestación", "virtualización", "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef",
     "openstack", "infrastructure as code", "iac", "configuración como código", "prometheus", "grafana",
     "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
     "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad",
-    "resilience", "resiliencia", "devsecops", "dataops", "integración continua", "entrega continua",
+    "resilience", "resiliencia", "devsecops", "integración continua", "entrega continua",
     "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
-    "failover", "disaster recovery", "gitlab"
+    "failover", "disaster recovery", "gitlab", "aiops", "gitops", 
+    # "arquitecto", "architect", 
+    # "data", "datos"
 ]
 
 # --- Tiempos ---
@@ -117,7 +122,7 @@ def get_total_results_occ(soup):
 def parse_job_card_occ(card_soup):
     """Extrae info de una tarjeta OCC."""
     job_data = {}
-    job_id_num = None
+    # job_id_num = None
     try:
         card_id = card_soup.get('id')
         if card_id and card_id.startswith('jobcard-'):
@@ -512,15 +517,15 @@ else:
     existing_df = pd.DataFrame(columns=FINAL_COLUMNS_TO_SAVE) # Usar la lista completa aquí
 
 # Calcular parámetros de fecha
-tm_param_occ = 7
-fromage_param_indeed = 7
-if last_run_time:
-    time_diff = datetime.now() - last_run_time
-    days_diff = time_diff.days
-    print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
-    if days_diff <= 3: tm_param_occ = 3
-    if days_diff <= 3: fromage_param_indeed = 3
-else: print("No se encontró fecha de última ejecución en CSV. Usando defaults (7 días).")
+tm_param_occ = 1
+fromage_param_indeed = 1
+# if last_run_time:
+#     time_diff = datetime.now() - last_run_time
+#     days_diff = time_diff.days
+#     print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
+#     if days_diff <= 3: tm_param_occ = 3
+#     if days_diff <= 3: fromage_param_indeed = 3
+# else: print("No se encontró fecha de última ejecución en CSV. Usando defaults (7 días).")
 print(f"Parámetros de búsqueda: tm={tm_param_occ} (OCC), fromage={fromage_param_indeed} (Indeed)")
 
 # Inicializar listas y contadores globales
@@ -547,9 +552,9 @@ try:
         all_new_jobs.extend(new_jobs_indeed)
         for key in all_processed_titles: all_processed_titles[key].extend(titles_indeed[key])
 
-        if i < len(SEARCH_KEYWORDS) - 1:
-            print(f"\nEsperando {DELAY_BETWEEN_KEYWORDS} segundos antes de la siguiente keyword...")
-            time.sleep(DELAY_BETWEEN_KEYWORDS)
+        # if i < len(SEARCH_KEYWORDS) - 1:
+        #     print(f"\nEsperando {DELAY_BETWEEN_KEYWORDS} segundos antes de la siguiente keyword...")
+        #     time.sleep(DELAY_BETWEEN_KEYWORDS)
 
 except WebDriverException as e_wd_global:
     print(f"\nERROR CRÍTICO DE WEBDRIVER: {e_wd_global}")

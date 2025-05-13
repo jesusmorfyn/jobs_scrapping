@@ -4,7 +4,7 @@ import math
 import re
 import pandas as pd
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # --- Selenium Imports ---
 from selenium import webdriver
@@ -15,46 +15,51 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
 # --- Configuración General ---
-OUTPUT_FILENAME = "linkedin_remote_jobs.csv"
+OUTPUT_FILENAME = "all_remote_jobs.csv"
 # Lista final de columnas a guardar
 FINAL_COLUMNS_TO_SAVE = ['job_id', 'platform', 'title', 'company', 'salary', 'timestamp_found', 'link']
 
 # --- Configuración Específica LinkedIn ---
 BASE_URL_LINKEDIN = "https://www.linkedin.com/jobs/search/?f_WT=2&keywords={keyword}&sortBy=DD"
 LINKEDIN_PAGE_INCREMENT = 25
-MAX_LINKEDIN_PAGES = 20
+MAX_LINKEDIN_PAGES = 40
 
 # --- Palabras a buscar ---
 SEARCH_KEYWORDS = [
-    "devops", "cloud", "aws", "gcp", "site reliability engineer", "mlops", "platform engineer"
+    # "data OR datos", 
+    "cloud OR azure OR aws OR gcp", 
+    # "sre OR devops"
 ]
 
 # --- Filtros de Título (Comunes) ---
 EXCLUDE_TITLE_KEYWORDS = [
-    "software", "development", "data", ".net", "python", "quality", "security", "seguridad", "developer",
-    "salesforce", "desarroll", "qa", "ruby", "test", "datos", "java", "fullstack", "sap", "hibrido",
-    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida", "oracle", "architect"
+    "software", "development", ".net", "python", "quality", "security", "seguridad", "developer",
+    "salesforce", "saleforce", "desarroll", "qa", "ruby", "test", "java", "fullstack", "sap", "hibrido",
+    "qlik sense", "qliksense", "híbrido", "híbrida", "hibrida", "oracle", "full stack", "sales",
+    "data", "datos"
 ]
 INCLUDE_TITLE_KEYWORDS = [
     "devops", "sre", "cloud", "mlops", "platform engineer", "infrastructure", "systems engineer",
-    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "nube",
+    "site reliability", "ingeniero de sistemas", "ingeniero de plataforma", "nube", "inteligencia",
     "automation", "automatización", "ci/cd", "continuous integration", "continuous delivery", "pipeline",
-    "aws", "azure", "gcp", "google cloud", "amazon web services", "cloud native",
+    "aws", "azure", "gcp", "google cloud", "amazon web", "cloud native", "intelligence",
     "kubernetes", "k8s", "docker", "containerization", "contenedores", "serverless", "serverless computing",
     "orquestación", "virtualización", "terraform", "ansible", "jenkins", "gitlab", "puppet", "chef",
     "openstack", "infrastructure as code", "iac", "configuración como código", "prometheus", "grafana",
     "observability", "observabilidad", "monitoring", "monitorización", "logging", "alerting", "alertas",
     "microservices", "microservicios", "deployment", "despliegue", "release", "escalability", "escalabilidad",
-    "resilience", "resiliencia", "devsecops", "dataops", "integración continua", "entrega continua",
+    "resilience", "resiliencia", "devsecops", "integración continua", "entrega continua",
     "automated deployment", "pipeline de despliegue", "orquestación de contenedores", "gestión de infraestructura",
-    "failover", "disaster recovery", "gitlab"
+    "failover", "disaster recovery", "gitlab", "aiops", "gitops",
+    # "arquitecto", "architect",
+    # "data", "datos"
 ]
 
 # --- Tiempos ---
-DELAY_BETWEEN_KEYWORDS = 15
+DELAY_BETWEEN_KEYWORDS = 10
 RETRY_DELAY = 10
 REQUEST_TIMEOUT_SELENIUM = 60
-DELAY_BETWEEN_PAGES_SELENIUM = 12
+DELAY_BETWEEN_PAGES_SELENIUM = 10
 
 # --- Funciones Selenium ---
 def setup_driver():
@@ -168,17 +173,39 @@ def parse_job_card_linkedin_from_div(job_div):
              return None
 
         # --- Extracción desde el contenedor padre (card_container) ---
-        title_tag = card_container.find(['h3', 'h4'], class_=lambda x: x and 'base-search-card__title' in x)
-        if not title_tag:
-            title_link = card_container.find('a', class_=lambda x: x and 'job-card-list__title' in x)
-            if title_link: job_data['title'] = title_link.get_text(strip=True)
+        title_tag_h = card_container.find(['h3', 'h4'], class_=lambda x: x and 'base-search-card__title' in x)
+
+        if title_tag_h:
+            job_data['title'] = title_tag_h.get_text(strip=True)
+        else:
+            title_link_element = card_container.find('a', class_=lambda x: x and 'job-card-list__title--link' in x)
+
+            if title_link_element:
+                strong_tag_in_link = title_link_element.find('strong')
+                if strong_tag_in_link and strong_tag_in_link.get_text(strip=True):
+                    job_data['title'] = strong_tag_in_link.get_text(strip=True)
+                elif title_link_element.get('aria-label'):
+                    job_data['title'] = title_link_element.get('aria-label').strip()
+                else:
+                    visually_hidden_span = title_link_element.find('span', class_='visually-hidden')
+                    if visually_hidden_span and visually_hidden_span.get_text(strip=True):
+                        job_data['title'] = visually_hidden_span.get_text(strip=True)
+                    else:
+                        job_data['title'] = "No especificado (estructura interna del link de título no esperada)"
             else:
-                 title_strong = card_container.find('strong')
-                 if title_strong: job_data['title'] = title_strong.get_text(strip=True)
-                 else:
-                      first_link_in_card = card_container.find('a')
-                      job_data['title'] = first_link_in_card.get_text(strip=True) if first_link_in_card else "No especificado"
-        else: job_data['title'] = title_tag.get_text(strip=True)
+                title_strong_global = card_container.find('strong')
+                if title_strong_global:
+                    job_data['title'] = title_strong_global.get_text(strip=True)
+                else:
+                    first_link_in_card = card_container.find('a')
+                    if first_link_in_card:
+                        aria_label_generic = first_link_in_card.get('aria-label')
+                        if aria_label_generic:
+                            job_data['title'] = aria_label_generic.strip()
+                        else:
+                            job_data['title'] = first_link_in_card.get_text(strip=True)
+                    else:
+                        job_data['title'] = "No especificado (título no encontrado)"
 
         company_tag = card_container.find(['a','span'], class_=lambda x: x and ('base-search-card__subtitle' in x or 'job-card-container__primary-description' in x))
         if not company_tag: company_tag = card_container.find('div', class_=lambda x: x and 'artdeco-entity-lockup__subtitle' in x)
@@ -345,9 +372,6 @@ def scrape_linkedin_for_keyword(driver, keyword, f_tpr_param, found_job_ids):
             if page >= max_pages: # Usar max_pages (que ya tiene el límite MAX_LINKEDIN_PAGES aplicado)
                  print(f"    LinkedIn: Se alcanzó la última página procesable ({max_pages}) para '{keyword}'.")
                  keep_paging = False
-            elif found_on_page == 0 and skipped_duplicates_page == 0 and page > 1:
-                 print(f"    LinkedIn: Página {page} sin nuevas ofertas ni duplicados conocidos. Asumiendo fin de resultados.")
-                 keep_paging = False
 
             if keep_paging:
                 page += 1
@@ -396,12 +420,12 @@ if os.path.exists(OUTPUT_FILENAME):
 else: print(f"El archivo '{OUTPUT_FILENAME}' no existe."); existing_df = pd.DataFrame(columns=FINAL_COLUMNS_TO_SAVE)
 
 # Calcular parámetros de fecha (Solo LinkedIn)
-f_tpr_param_linkedin = "r604800" # Default 1 semana
-if last_run_time:
-    time_diff = datetime.now() - last_run_time; days_diff = time_diff.days
-    print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
-    if days_diff <= 1: f_tpr_param_linkedin = "r86400" # 1 día
-else: print("No se encontró fecha de última ejecución en CSV. Usando default (1 semana).")
+f_tpr_param_linkedin = "r259200" # "r777600" #"r604800" # Default 1 semana
+# if last_run_time:
+#     time_diff = datetime.now() - last_run_time; days_diff = time_diff.days
+#     print(f"Última ejecución (según CSV) detectada hace {days_diff} días.")
+#     if days_diff <= 1: f_tpr_param_linkedin = "r259200" # 1 día
+# else: print("No se encontró fecha de última ejecución en CSV. Usando default (1 semana).")
 print(f"Parámetro de búsqueda LinkedIn: f_TPR={f_tpr_param_linkedin}")
 
 all_new_jobs = []; all_processed_titles = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
@@ -418,9 +442,9 @@ try:
             new_jobs_linkedin, titles_linkedin = scrape_linkedin_for_keyword(driver, keyword_linkedin, f_tpr_param_linkedin, found_job_ids)
             all_new_jobs.extend(new_jobs_linkedin)
             for key in all_processed_titles: all_processed_titles[key].extend(titles_linkedin[key])
-            if i < len(SEARCH_KEYWORDS) - 1:
-                print(f"\n--- Esperando {DELAY_BETWEEN_KEYWORDS} segundos antes de la siguiente keyword... ---")
-                time.sleep(DELAY_BETWEEN_KEYWORDS)
+            # if i < len(SEARCH_KEYWORDS) - 1:
+            #     print(f"\n--- Esperando {DELAY_BETWEEN_KEYWORDS} segundos antes de la siguiente keyword... ---")
+            #     time.sleep(DELAY_BETWEEN_KEYWORDS)
     else:
         print("ERROR CRÍTICO: No se pudo iniciar el driver de Selenium. El script no puede continuar.")
 
