@@ -3,3 +3,4 @@ pandas
 selenium
 requests
 lxml
+PyYAML
