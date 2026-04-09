@@ -93,10 +93,13 @@ def close_cookie_popup(driver, wait_short):
 # --- Scraping: LinkedIn ---
 def get_total_results_linkedin(driver, config_platform):
     try:
+        # Busca el subtítulo que ahora usa clases diferentes o la clase de texto de resultados
         subtitle_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.jobs-search-results-list__subtitle"))
+            EC.presence_of_element_located((By.XPATH, "//*[contains(@class, 'jobs-search-results-list__text') or contains(@class, 'jobs-search-results-list__subtitle')]"))
         )
-        match = re.search(r'(\d+)', subtitle_element.text.replace(',', ''))
+        # Limpiamos el texto de comas y el signo '+' (ej. "4,000+ results")
+        clean_text = subtitle_element.text.replace(',', '').replace('+', '')
+        match = re.search(r'(\d+)', clean_text)
         if match:
             total = int(match.group(1))
             limit = config_platform['max_pages'] * config_platform['page_increment']
@@ -113,23 +116,35 @@ def get_total_results_linkedin(driver, config_platform):
 def parse_job_card_linkedin_from_div(job_div):
     job_id = job_div.get('data-job-id')
     if not job_id: return None
-        
-    card_container = job_div.find_parent('li') or job_div.find_parent('div', class_=lambda x: x and ('job-card-container' in x or 'job-posting-card' in x))
-    if not card_container: return None
 
-    title_tag_h = card_container.find(['h3', 'h4'], class_=lambda x: x and 'base-search-card__title' in x)
-    if title_tag_h:
-        title = title_tag_h.get_text(strip=True)
-    else:
-        title_link = card_container.find('a', class_=lambda x: x and 'job-card-list__title--link' in x)
-        title = title_link.get_text(strip=True) if title_link else "No especificado"
+    # --- Extraer Título ---
+    title = "No especificado"
+    title_link = job_div.find('a', class_=lambda x: x and 'job-card-list__title--link' in x)
+    
+    if title_link:
+        # En la nueva UI, el título real suele estar dentro de un tag <strong>
+        strong_tag = title_link.find('strong')
+        if strong_tag:
+            title = strong_tag.get_text(strip=True)
+        else:
+            title = title_link.get_text(strip=True)
 
-    company_tag = card_container.find(['a','span'], class_=lambda x: x and ('subtitle' in x or 'primary-description' in x))
-    company = company_tag.get_text(strip=True) if company_tag else "No especificado"
+    # --- Extraer Empresa ---
+    company = "No especificado"
+    # Evitamos usar la clase generada aleatoriamente (como "QFwixpMG...") y buscamos a su padre estable
+    company_div = job_div.find('div', class_=lambda x: x and 'artdeco-entity-lockup__subtitle' in x)
+    if company_div:
+        company = company_div.get_text(strip=True)
 
     if title == "No especificado" or company == "No especificado": return None
 
-    return {'job_id': str(job_id), 'title': title, 'company': company, 'salary': "No especificado", 'link': f"https://www.linkedin.com/jobs/view/{job_id}/"}
+    return {
+        'job_id': str(job_id), 
+        'title': title, 
+        'company': company, 
+        'salary': "No especificado", 
+        'link': f"https://www.linkedin.com/jobs/view/{job_id}/"
+    }
 
 def scrape_linkedin_for_keyword(driver, keyword, time_param, found_job_ids, config):
     if not driver: return [], {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
@@ -155,10 +170,19 @@ def scrape_linkedin_for_keyword(driver, keyword, time_param, found_job_ids, conf
             
         try:
             wait_long.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-job-id]")))
+            
             if page == 1:
                 total_results = get_total_results_linkedin(driver, cfg)
                 max_pages = min(math.ceil(total_results / cfg['page_increment']), cfg['max_pages']) if total_results > 0 else 1
             
+            # NUEVO: Hacer scroll en el panel izquierdo para que carguen todos los resultados de la página
+            try:
+                pane = driver.find_element(By.CSS_SELECTOR, "div.jobs-search-results-list")
+                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", pane)
+                time.sleep(2) # Esperar a que rendericen
+            except:
+                pass # Si no encuentra el panel, ignora y continúa con lo que hay
+                
             job_divs = BeautifulSoup(driver.page_source, 'lxml').find_all('div', attrs={'data-job-id': True})
             if not job_divs: break
                 
@@ -177,10 +201,10 @@ def scrape_linkedin_for_keyword(driver, keyword, time_param, found_job_ids, conf
                     new_jobs.append(job_info); found_job_ids.add(job_info['job_id'])
                     processed_titles['included'].append(job_info['title']); found_on_page += 1
                     
-            logger.info(f"LinkedIn: Pág {page}. Nuevas: +{found_on_page}")
+            logger.info(f"LinkedIn: Pág {page}/{max_pages}. Nuevas: +{found_on_page}")
             if page >= max_pages: break
             page += 1
-            time.sleep(cfg['delay_between_pages_selenium'])
+            time.sleep(cfg.get('delay_between_pages_selenium', 3))
             
         except TimeoutException:
             logger.error(f"LinkedIn: Timeout en página {page}.")
