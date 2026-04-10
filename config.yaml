@@ -36,34 +36,56 @@ timing:
 # ==========================================
 search_filters:
   search_keywords:
+    - azure
+    - devops
+    - aws
+    - gcp
     - cloud
+    - "site reliability engineer"
+    - sre
+    - terraform
+    - kubernetes
   
   # Si pones palabras aquí, SOLO guardará las ofertas que tengan ALGUNA de estas palabras en el título. 
   # Déjalo vacío "[]"" para no filtrar por inclusión estricta.
   include_title_keywords: 
     - aws
-    - gcp
     - devops
-    - reliability
-    - kubernetes
-    - docker
+    - sre
+    - reliability  # Captura Site Reliability Engineer
     - cloud
+    - kubernetes
+    - k8s
+    - terraform
+    - infrastructure
+    - automation
     - platform
-    - gitlab
+    - docker
+    - cicd
+    - jenkins
+    - ansible
+    - gcp
+    - azure
   
   # Si el título contiene ALGUNA de estas palabras, la oferta se descarta.
   exclude_title_keywords:
     - SAP
-    - data
     - Salesforce
-    - Desarroll
-    - developer
-    - development
-    - Software
     - data
     - datos
-    - hybrid
-    - hibrid
+    - Frontend
+    - Backend
+    - Java
+    - Python  # Solo si buscas infraestructura pura y no desarrollo de software
+    - ".NET"
+    - Android
+    - iOS
+    - "Full Stack"
+    - QA
+    - Tester
+    - Trainee
+    - Intern
+    - Becario
     - biling
     - ingl
     - english
@@ -80,11 +102,11 @@ platforms:
       start: 1
       increment: 1
     max_pages: 3
-    delay_between_pages: 3
+    delay_between_pages: 5
     link_format: "https://www.occ.com.mx/empleo/oferta/{job_id}"
     selenium_rules:
       wait_for_selector: "div[id^='jobcard-']"
-      no_results_text: "0 resultados"
+      no_results_text: "No hay empleos que coincidan con tu"
       # En OCC, el botón no desaparece, solo se le añade la clase 'pointer-events-none'
       stop_pagination_if_present: "li#btn-next-offer.pointer-events-none" 
     selectors:
@@ -130,10 +152,11 @@ platforms:
   linkedin:
     enabled: false
     base_url: "https://www.linkedin.com/jobs/search/?f_WT=2&keywords={keyword}&sortBy=DD&f_TPR=r604800"
-    max_pages: 50
+    max_pages: 40
     delay_between_pages: 5
     link_format: "https://www.linkedin.com/jobs/view/{job_id}/"
     selenium_rules:
+      browser_zoom: 0.25
       wait_for_selector: "div[data-job-id]"
       # Agregamos la nueva clase de LinkedIn para que vuelva a hacer scroll
       scroll_pane_selector: ".scaffold-layout__list, .jobs-search-results-list"

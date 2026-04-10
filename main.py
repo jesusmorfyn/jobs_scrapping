@@ -34,6 +34,8 @@ def scraper_worker(scraper_name, config, keywords, shared_job_ids, shared_result
 
         scraper = GenericScraper(config, scraper_name, driver)
 
+        scraper.initialize_session()
+
         for kw in keywords:
             local_job_ids = set(shared_job_ids)
             jobs_encontrados, titulos_procesados = scraper.scrape_keyword(kw, local_job_ids)

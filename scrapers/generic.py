@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from .base import BaseScraper
 from core.models import JobOffer
 from core.filter import filter_job_by_title
-from utils.selenium_utils import close_cookie_popup, block_heavy_content
+from utils.selenium_utils import close_cookie_popup, block_heavy_content, apply_stealth, load_cookies
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,24 @@ class GenericScraper(BaseScraper):
         super().__init__(config, platform_name)
         self.driver = driver
         self.p_cfg = self.config['platforms'][self.platform_name]
+
+    def initialize_session(self):
+        """Se ejecuta UNA SOLA VEZ cuando el contenedor nace."""
+        logger.info(f"[{self.platform_name.upper()}] Inicializando sesión y camuflaje...")
+        
+        # 1. Aplicamos camuflaje (CDP se mantiene activo en toda la pestaña)
+        apply_stealth(self.driver)
+        
+        # 2. Navegamos al dominio raíz para poder inyectar cookies
+        # Usamos una URL genérica tonta (como un 404 o robots.txt) para no alertar al servidor
+        base_url = self.p_cfg['base_url']
+        domain = "/".join(base_url.split('/')[:3]) 
+        self.driver.get(domain + "/robots.txt")
+        time.sleep(1)
+        
+        # 3. Inyectamos cookies e instruimos bloqueo de imágenes
+        load_cookies(self.driver, self.platform_name)
+        block_heavy_content(self.driver)
 
     def _extract_field(self, soup_element, rules):
         if not rules or rules == "NONE": return "No especificado"
@@ -37,12 +55,25 @@ class GenericScraper(BaseScraper):
         html = None
         
         if url:
-            block_heavy_content(self.driver)
+            # Como ya inyectamos cookies en initialize_session, solo navegamos directo
             self.driver.get(url)
+            
+            # --- APLICAR ZOOM CONFIGURABLE ---
+            zoom_level = sel_rules.get('browser_zoom', 1.0)
+            if zoom_level != 1.0:
+                percentage = int(zoom_level * 100)
+                logger.info(f"🔍 [{self.platform_name.upper()}] Aplicando zoom del {percentage}%...")
+                self.driver.execute_script(f"document.body.style.zoom='{percentage}%'")
+            
             time.sleep(2)
 
         wait_seconds = 0
         while True:
+            # Re-aplicar zoom si la plataforma resetea el body al navegar
+            zoom_level = sel_rules.get('browser_zoom', 1.0)
+            if zoom_level != 1.0:
+                self.driver.execute_script(f"document.body.style.zoom='{int(zoom_level * 100)}%'")
+
             current_html = self.driver.page_source
             current_url = self.driver.current_url.lower()
             
@@ -65,7 +96,7 @@ class GenericScraper(BaseScraper):
                             last_height = self.driver.execute_script("return arguments[0].scrollHeight", pane)
                             for _ in range(5):
                                 self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", pane)
-                                time.sleep(1)
+                                time.sleep(1.5)
                                 new_height = self.driver.execute_script("return arguments[0].scrollHeight", pane)
                                 if new_height == last_height: break
                                 last_height = new_height
@@ -80,10 +111,8 @@ class GenericScraper(BaseScraper):
                 
             time.sleep(4)
             wait_seconds += 4
-            
-            # ELIMINAMOS EL BREAK. Ahora solo avisa cada minuto, pero espera infinitamente.
             if wait_seconds > 0 and wait_seconds % 60 == 0:
-                logger.warning(f"⏳ [{self.platform_name.upper()}] Llevamos {wait_seconds}s esperando carga de elementos o resolución manual...")
+                logger.warning(f"⏳ [{self.platform_name.upper()}] Sigue esperando carga...")
             
         return html
 
@@ -147,11 +176,8 @@ class GenericScraper(BaseScraper):
                 parsed_count += 1
                 current_page_job_ids.add(job_offer.job_id)
 
-                # Pasamos por los filtros (aquí se determina si se guarda o se descarta)
-                # Al enviar job_offer.title a filter_job_by_title, recibimos un tupla de 3 valores.
                 filtro_resultado = filter_job_by_title(job_offer.title, self.config['search_filters'])
                 
-                # Para evitar desempaquetados incorrectos, asignamos según el tamaño de la tupla
                 if isinstance(filtro_resultado, tuple):
                     if len(filtro_resultado) == 3:
                         is_valid, r_type, r_kw = filtro_resultado
@@ -183,10 +209,8 @@ class GenericScraper(BaseScraper):
                     if debug_mode:
                         page_debug_info.append(f"  [🔄 Duplicada] {job_offer.title} | (Ya está en tu CSV)")
 
-            # Resumen de la página
             logger.info(f"[{self.platform_name.upper()}] Pág {page_num} lista. Tarjetas HTML: {len(job_cards)} | Extraídas: {parsed_count} | Nuevas para CSV: +{found_on_page}")
             
-            # Si el debug está activo, imprimimos el reporte detallado
             if debug_mode and page_debug_info:
                 logger.info(f"--- REPORTE DEBUG PÁG {page_num} ({self.platform_name.upper()}) ---")
                 for info in page_debug_info:
