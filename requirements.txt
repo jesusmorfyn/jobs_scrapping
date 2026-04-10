@@ -4,3 +4,4 @@ selenium
 requests
 lxml
 PyYAML
+docker

@@ -22,6 +22,7 @@ selenium:
   # Si corres el script de forma normal en tu PC, usa: "127.0.0.1:9222"
   # Si usas el DevContainer (Docker), usa: "host.docker.internal:9222"
   debugger_address: "192.168.10.235:9223"
+  image: "selenium/standalone-chrome:latest"
 
 # ==========================================
 # GESTIÓN DE TIEMPOS (Evitar baneos)

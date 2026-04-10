@@ -3,6 +3,13 @@
     "build": {
         "dockerfile": "Dockerfile"
     },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+            "version": "latest",
+            "enableNonRootDocker": "true",
+            "moby": "true"
+        }
+    },
     "customizations": {
         "vscode": {
             "settings": {
@@ -12,7 +19,8 @@
                 "ms-python.python",
                 "ms-python.vscode-pylance",
                 "redhat.vscode-yaml",
-                "mechatroner.rainbow-csv"
+                "mechatroner.rainbow-csv",
+                "ms-azuretools.vscode-docker"
             ]
         }
     },

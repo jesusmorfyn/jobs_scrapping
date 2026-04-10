@@ -9,17 +9,29 @@ from core.logger import setup_logger
 from core.filter import merge_processed_titles
 
 from utils.selenium_utils import setup_driver
+from utils.docker_utils import SeleniumContainerManager
 from storage.csv_handler import CSVHandler
 
-# Importamos ÚNICAMENTE el scraper genérico
 from scrapers.generic import GenericScraper
 
-def scraper_worker(scraper_name, config, keywords, shared_job_ids, shared_results, shared_titles, data_lock, driver, browser_lock, tab_handle):
+def scraper_worker(scraper_name, config, keywords, shared_job_ids, shared_results, shared_titles, data_lock):
     logger = logging.getLogger(__name__)
+    container_manager = None
+    driver = None
     
     try:
-        scraper = GenericScraper(config, scraper_name, driver, browser_lock, tab_handle)
+        # 1. Levantar contenedor efímero exclusivo para este scraper
+        container_manager = SeleniumContainerManager(image_name=config['selenium']['image'])
+        command_executor_url = container_manager.start()
+        
+        # 2. Conectar Selenium al contenedor
+        driver = setup_driver(command_executor_url)
+        if not driver:
+            raise Exception("No se pudo conectar al driver remoto.")
 
+        scraper = GenericScraper(config, scraper_name, driver)
+
+        # 3. Scrapear
         for kw in keywords:
             local_job_ids = set(shared_job_ids)
             jobs_encontrados, titulos_procesados = scraper.scrape_keyword(kw, local_job_ids)
@@ -34,6 +46,13 @@ def scraper_worker(scraper_name, config, keywords, shared_job_ids, shared_result
 
     except Exception as e:
         logger.error(f"[{scraper_name.upper()}] Error crítico: {e}", exc_info=True)
+    finally:
+        # 4. LIMPIEZA ABSOLUTA (Asegura que nada quede volando)
+        if driver:
+            try: driver.quit()
+            except: pass
+        if container_manager:
+            container_manager.stop()
 
 def main(config_path):
     config = load_config(config_path)
@@ -46,7 +65,6 @@ def main(config_path):
     shared_titles = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
     
     data_lock = threading.Lock()
-    browser_lock = threading.Lock()
 
     scrapers_activos = [k for k, v in config['platforms'].items() if v.get('enabled', False)]
     
@@ -54,29 +72,16 @@ def main(config_path):
         logger.info("No hay plataformas habilitadas en config.yaml.")
         return
 
-    # 1. PREPARAR EL NAVEGADOR ÚNICO (Ahora es universal)
-    driver = setup_driver(config['selenium'])
-    if not driver:
-        logger.error("No se pudo iniciar Chrome/Selenium. Revisa tu debugger_address.")
-        return
+    logger.info(f"=== INICIANDO SCRAPING ({len(scrapers_activos)} hilos/contenedores) ===")
 
-    tab_handles = {}
-    for name in scrapers_activos:
-        driver.switch_to.new_window('tab')
-        tab_handles[name] = driver.current_window_handle
-
-    logger.info(f"=== INICIANDO SCRAPING ({len(scrapers_activos)} hilos) ===")
-
-    # 2. LANZAR HILOS
+    # LANZAR HILOS (Cada uno levantará su propio contenedor)
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(scrapers_activos)) as executor:
         futuros = []
         for name in scrapers_activos:
-            tab = tab_handles.get(name)
             futuros.append(executor.submit(
                 scraper_worker, 
                 name, config, config['search_filters']['search_keywords'], 
-                shared_job_ids, shared_results, shared_titles, 
-                data_lock, driver, browser_lock, tab
+                shared_job_ids, shared_results, shared_titles, data_lock
             ))
 
         for futuro in concurrent.futures.as_completed(futuros):
@@ -87,9 +92,6 @@ def main(config_path):
         storage.save_jobs([job.__dict__ for job in shared_results])
     else:
         logger.info("No hay nuevas ofertas para guardar.")
-    
-    # Opcional: Cerrar el navegador al final (coméntalo si prefieres que se quede abierto)
-    # driver.quit()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
