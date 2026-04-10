@@ -134,7 +134,7 @@ platforms:
     link_format: "https://mx.indeed.com/viewjob?jk={job_id}"
     selenium_rules:
       wait_for_selector: "#mosaic-provider-jobcards"
-      no_results_text: "did not match any jobs"
+      no_results_text: "ningún resultado."
       # En Indeed, el botón 'siguiente' literalmente desaparece del HTML en la última página
       stop_pagination_if_missing: "a[data-testid='pagination-page-next']"
     selectors:
