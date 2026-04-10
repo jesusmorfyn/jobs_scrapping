@@ -175,8 +175,6 @@ curl http://127.0.0.1:9223/json/version
 
 }
 
-
-
 find . -type f \
     -not -path "*/venv/*" \
     -not -path "*/cookies/*" \

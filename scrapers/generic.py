@@ -34,14 +34,17 @@ class GenericScraper(BaseScraper):
                 return match.group(1) if match.groups() else match.group(0)
         return val
 
-    def _get_html_selenium(self, url):
+    def _get_html_selenium(self, url=None):
         sel_rules = self.p_cfg.get('selenium_rules', {})
         html = None
         
         with self.browser_lock:
             self.driver.switch_to.window(self.tab_handle)
-            block_heavy_content(self.driver)
-            self.driver.get(url)
+            # Si pasamos URL, es carga inicial. Si es None, solo evaluamos la página actual tras un Click.
+            if url:
+                block_heavy_content(self.driver)
+                self.driver.get(url)
+                time.sleep(2) # Espera base anti-staleness
 
         wait_seconds = 0
         while True:
@@ -56,7 +59,7 @@ class GenericScraper(BaseScraper):
                 # 1. Detector de Cloudflare / Checkpoints
                 if "cf-wrapper" in current_html or "challenge" in current_url or "security check" in current_html.lower() or "just a moment" in current_html.lower():
                     if wait_seconds % 15 == 0:
-                        logger.warning(f"🚨 [{self.platform_name.upper()}] Bloqueo detectado. Esperando intervención manual... ({wait_seconds}s)")
+                        logger.warning(f"🚨 [{self.platform_name.upper()}] Bloqueo detectado. Esperando manual... ({wait_seconds}s)")
                 else:
                     soup = BeautifulSoup(current_html, 'lxml')
                     wait_sel = sel_rules.get('wait_for_selector', '')
@@ -72,25 +75,27 @@ class GenericScraper(BaseScraper):
                                 last_height = self.driver.execute_script("return arguments[0].scrollHeight", pane)
                                 for _ in range(5):
                                     self.driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", pane)
-                                    time.sleep(1.5)
+                                    time.sleep(1)
                                     new_height = self.driver.execute_script("return arguments[0].scrollHeight", pane)
-                                    if new_height == last_height:
-                                        break
+                                    if new_height == last_height: break
                                     last_height = new_height
                             except: pass
                         html = self.driver.page_source
                         break
                         
-                    # 3. Validar si es una página vacía legítima
+                    # 3. Validar página vacía legítima
                     no_res = sel_rules.get('no_results_text', 'xxxxxx')
                     if no_res.lower() in current_html.lower():
-                        logger.info(f"[{self.platform_name.upper()}] No hay resultados en esta página.")
+                        logger.info(f"[{self.platform_name.upper()}] No hay resultados.")
                         break
                     
-            time.sleep(5)
-            wait_seconds += 5
-            if wait_seconds % 15 == 0 and "cf-wrapper" not in current_html and "challenge" not in current_url:
-                logger.warning(f"⏳ [{self.platform_name.upper()}] La página aún está cargando elementos... ({wait_seconds}s)")
+            time.sleep(4)
+            wait_seconds += 4
+            
+            # Timeout de seguridad
+            if wait_seconds > 60 and "cf-wrapper" not in current_html and "challenge" not in current_url:
+                logger.warning(f"[{self.platform_name.upper()}] Timeout esperando elementos. Avanzando...")
+                break
             
         return html
 
@@ -116,23 +121,20 @@ class GenericScraper(BaseScraper):
     def scrape_keyword(self, keyword: str, found_job_ids: set):
         keyword_formatted = keyword.replace(' ', '%20')
         base_url = self.p_cfg['base_url'].format(keyword=keyword_formatted)
-        pag_cfg = self.p_cfg['pagination']
         sel_rules = self.p_cfg.get('selenium_rules', {})
+        pag_cfg = self.p_cfg.get('pagination', {})
+        current_pag_val = pag_cfg.get('start', 0)
         
-        current_pag_val = pag_cfg['start']
         page_num = 1
         new_jobs = []
         processed_titles = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
-        
-        # Guardaremos los IDs de la página anterior para detectar bucles infinitos reales
         previous_page_job_ids = set()
 
+        logger.info(f"[{self.platform_name.upper()}] Scrapeando '{keyword}' - Pág {page_num}...")
+        # 1. Carga inicial
+        html = self._get_html_selenium(base_url)
+
         while page_num <= self.p_cfg.get('max_pages', 50):
-            url = f"{base_url}&{pag_cfg['param']}={current_pag_val}" if current_pag_val > 0 else base_url
-            
-            logger.info(f"[{self.platform_name.upper()}] Scrapeando '{keyword}' - Pág {page_num}...")
-            
-            html = self._get_html_selenium(url)
             if not html: break
 
             soup = BeautifulSoup(html, 'lxml')
@@ -148,7 +150,6 @@ class GenericScraper(BaseScraper):
                 job_offer = self.parse_job_card(card)
                 if not job_offer: continue
                 
-                # Agregamos a la lista de la página actual para el comparador de bucle
                 current_page_job_ids.add(job_offer.job_id)
 
                 is_valid, r_type, _ = filter_job_by_title(job_offer.title, self.config['search_filters'])
@@ -164,32 +165,42 @@ class GenericScraper(BaseScraper):
 
             logger.info(f"[{self.platform_name.upper()}] Pág {page_num} completada. Nuevas: +{found_on_page}")
             
-            # --- DETECCIÓN VISUAL Y LÓGICA DE FIN DE PAGINACIÓN ---
-            
-            # 1. El botón de Siguiente existe, pero está desactivado (Ej: OCC, LinkedIn a veces)
+            # --- DETECCIÓN VISUAL DE FIN DE PAGINACIÓN ---
             stop_present = sel_rules.get('stop_pagination_if_present')
             if stop_present and soup.select_one(stop_present):
-                logger.info(f"[{self.platform_name.upper()}] Última página detectada por interfaz (Botón Siguiente desactivado).")
                 break
                 
-            # 2. El botón de Siguiente desapareció del HTML (Ej: Indeed, LinkedIn al final)
             stop_missing = sel_rules.get('stop_pagination_if_missing')
             if stop_missing:
-                pagination_container_loaded = soup.find(class_=lambda x: x and ('pagination' in x.lower() or 'serp-page' in x.lower()))
+                # Buscamos el contenedor de forma segura (previniendo crasheos de librerías)
+                pagination_container_loaded = soup.find(class_=lambda x: x and any('pagination' in c.lower() or 'serp-page' in c.lower() for c in (x if isinstance(x, list) else [str(x)])))
                 if pagination_container_loaded and not soup.select_one(stop_missing):
-                    logger.info(f"[{self.platform_name.upper()}] Última página detectada por interfaz (Botón Siguiente no existe).")
                     break
 
-            # 3. BUCLE INFINITO REAL: ¿La página actual me dio las mismas tarjetas que la página anterior?
             if current_page_job_ids and current_page_job_ids == previous_page_job_ids:
-                logger.info(f"[{self.platform_name.upper()}] El portal devolvió los mismos resultados que la página anterior. Forzando fin.")
                 break
             
-            # Guardar el estado para la siguiente iteración
             previous_page_job_ids = current_page_job_ids
 
-            current_pag_val += pag_cfg['increment']
+            # --- TRANSICIÓN A LA SIGUIENTE PÁGINA ---
+            next_btn_sel = sel_rules.get('next_button_selector')
+            
+            if next_btn_sel:
+                # Paginación por Click (Recomendado para SPAs como LinkedIn)
+                try:
+                    btn = self.driver.find_element(By.CSS_SELECTOR, next_btn_sel)
+                    self.driver.execute_script("arguments[0].click();", btn)
+                    time.sleep(self.p_cfg.get('delay_between_pages', 4))
+                    html = self._get_html_selenium(url=None) # No recargamos la URL, evaluamos la misma página
+                except Exception:
+                    break
+            else:
+                # Paginación Clásica por URL (Fallback)
+                if not pag_cfg: break
+                current_pag_val += pag_cfg.get('increment', 1)
+                url = f"{base_url}&{pag_cfg['param']}={current_pag_val}"
+                html = self._get_html_selenium(url)
+
             page_num += 1
-            time.sleep(self.p_cfg.get('delay_between_pages', self.config['timing']['delay_between_keywords']))
 
         return new_jobs, processed_titles

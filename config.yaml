@@ -67,50 +67,6 @@ search_filters:
     - ingl
     - english
 
-
-
-
-
-# # ==========================================
-# # CONFIGURACIÓN POR PLATAFORMA
-# # ==========================================
-# platforms:
-  
-#   occ:
-#     enabled: true
-#     base_url: "https://www.occ.com.mx/empleos/de-remoto/busqueda/?query={keyword}"
-#     time_param_name: "tm"
-#     default_time_param_value: "7"  # 7 = Últimos 7 días
-#     max_pages: 50                   # Máximo de páginas a scrapear por cada keyword
-#     request_timeout: 10            # Segundos que 'requests' espera la respuesta del servidor
-
-#   indeed:
-#     enabled: true
-#     # Nota: Asegúrate de que tu URL base de Indeed no contenga parámetros de paginación extraños.
-#     base_url: "https://mx.indeed.com/jobs?q={keyword}&sc=0kf%3Aattr%28DSQF7%29%3B" # Ese sc=... es el filtro de Trabajo Remoto
-#     time_param_name: "fromage"
-#     default_time_param_value: "7"  # Últimos 7 días
-#     max_pages: 50
-#     page_increment: 10             # Indeed pagina de 10 en 10 (start=0, start=10, start=20...)
-#     request_timeout_selenium: 15
-#     delay_between_pages_selenium: 5
-
-#   linkedin:
-#     enabled: true
-#     # f_WT=2 es el filtro interno de LinkedIn para "Remoto"
-#     base_url: "https://www.linkedin.com/jobs/search/?f_WT=2&keywords={keyword}&sortBy=DD"
-#     time_param_name: "f_TPR"
-#     default_time_param_value: "r604800" # r604800 = Última semana (es el tiempo en segundos)
-#     max_pages: 50
-#     page_increment: 25             # LinkedIn pagina de 25 en 25 (start=0, start=25, start=50...)
-#     request_timeout_selenium: 15
-#     delay_between_pages_selenium: 5
-  
-
-
-
-
-
 # ==========================================
 # CONFIGURACIÓN POR PLATAFORMA (100% Selenium)
 # ==========================================
@@ -122,7 +78,7 @@ platforms:
       param: "page"
       start: 1
       increment: 1
-    max_pages: 50
+    max_pages: 3
     delay_between_pages: 3
     link_format: "https://www.occ.com.mx/empleo/oferta/{job_id}"
     selenium_rules:
@@ -144,7 +100,7 @@ platforms:
         selector: "span.font-base"
 
   indeed:
-    enabled: true
+    enabled: false
     base_url: "https://mx.indeed.com/jobs?q={keyword}&sc=0kf%3Aattr%28DSQF7%29%3B&fromage=7"
     pagination:
       param: "start"
@@ -171,20 +127,18 @@ platforms:
         selector: "div[data-testid='salary-snippet-container']"
 
   linkedin:
-    enabled: true
+    enabled: false
     base_url: "https://www.linkedin.com/jobs/search/?f_WT=2&keywords={keyword}&sortBy=DD&f_TPR=r604800"
-    pagination:
-      param: "start"
-      start: 0
-      increment: 25
     max_pages: 50
     delay_between_pages: 5
     link_format: "https://www.linkedin.com/jobs/view/{job_id}/"
     selenium_rules:
-      wait_for_selector: "div.jobs-search-results-list, div[data-job-id]"
-      scroll_pane_selector: "div.jobs-search-results-list"
+      wait_for_selector: "div[data-job-id]"
+      # Agregamos la nueva clase de LinkedIn para que vuelva a hacer scroll
+      scroll_pane_selector: ".scaffold-layout__list, .jobs-search-results-list"
       no_results_text: "No matching jobs found"
-      # En LinkedIn el botón 'Next' suele desaparecer al final, o estar desactivado.
+      # ¡Tu idea! Le decimos al scraper cuál es el botón exacto a presionar
+      next_button_selector: "button.jobs-search-pagination__button--next"
       stop_pagination_if_missing: "button.jobs-search-pagination__button--next"
       stop_pagination_if_present: "button.jobs-search-pagination__button--next[disabled]"
     selectors:
