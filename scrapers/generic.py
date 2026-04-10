@@ -36,7 +36,6 @@ class GenericScraper(BaseScraper):
         sel_rules = self.p_cfg.get('selenium_rules', {})
         html = None
         
-        # Ya no hay candados (browser_lock). ¡Este driver es exclusivo de este hilo!
         if url:
             block_heavy_content(self.driver)
             self.driver.get(url)
@@ -76,15 +75,15 @@ class GenericScraper(BaseScraper):
                     
                 no_res = sel_rules.get('no_results_text', 'xxxxxx')
                 if no_res.lower() in current_html.lower():
-                    logger.info(f"[{self.platform_name.upper()}] No hay resultados.")
+                    logger.info(f"[{self.platform_name.upper()}] No hay resultados en esta página.")
                     break
                 
             time.sleep(4)
             wait_seconds += 4
             
-            if wait_seconds > 60 and "cf-wrapper" not in current_html and "challenge" not in current_url:
-                logger.warning(f"[{self.platform_name.upper()}] Timeout esperando elementos. Avanzando...")
-                break
+            # ELIMINAMOS EL BREAK. Ahora solo avisa cada minuto, pero espera infinitamente.
+            if wait_seconds > 0 and wait_seconds % 60 == 0:
+                logger.warning(f"⏳ [{self.platform_name.upper()}] Llevamos {wait_seconds}s esperando carga de elementos o resolución manual...")
             
         return html
 
@@ -114,13 +113,14 @@ class GenericScraper(BaseScraper):
         pag_cfg = self.p_cfg.get('pagination', {})
         current_pag_val = pag_cfg.get('start', 0)
         
+        debug_mode = self.config['general'].get('debug_mode', False)
+        
         page_num = 1
         new_jobs = []
         processed_titles = {'included': [], 'excluded_explicit': [], 'excluded_implicit': []}
         previous_page_job_ids = set()
 
         logger.info(f"[{self.platform_name.upper()}] Scrapeando '{keyword}' - Pág {page_num}...")
-        # 1. Carga inicial
         html = self._get_html_selenium(base_url)
 
         while page_num <= self.p_cfg.get('max_pages', 50):
@@ -133,17 +133,43 @@ class GenericScraper(BaseScraper):
             if not job_cards: break
 
             found_on_page = 0
+            parsed_count = 0
             current_page_job_ids = set()
+            page_debug_info = []
 
             for card in job_cards:
                 job_offer = self.parse_job_card(card)
-                if not job_offer: continue
+                if not job_offer:
+                    if debug_mode:
+                        page_debug_info.append("  [⚠️ Error Parseo] No se pudo extraer ID o Título de una tarjeta HTML.")
+                    continue
                 
+                parsed_count += 1
                 current_page_job_ids.add(job_offer.job_id)
 
-                is_valid, r_type, _ = filter_job_by_title(job_offer.title, self.config['search_filters'])
+                # Pasamos por los filtros (aquí se determina si se guarda o se descarta)
+                # Al enviar job_offer.title a filter_job_by_title, recibimos un tupla de 3 valores.
+                filtro_resultado = filter_job_by_title(job_offer.title, self.config['search_filters'])
+                
+                # Para evitar desempaquetados incorrectos, asignamos según el tamaño de la tupla
+                if isinstance(filtro_resultado, tuple):
+                    if len(filtro_resultado) == 3:
+                        is_valid, r_type, r_kw = filtro_resultado
+                    elif len(filtro_resultado) == 2:
+                        is_valid, r_type = filtro_resultado
+                        r_kw = None
+                    else:
+                        is_valid, r_type, r_kw = False, "excluded_implicit", None
+                else:
+                    is_valid, r_type, r_kw = False, "excluded_implicit", None
+
+                
                 if not is_valid:
-                    processed_titles[r_type].append(job_offer.title)
+                    if r_type in processed_titles:
+                        processed_titles[r_type].append(job_offer.title)
+                    if debug_mode:
+                        motivo = f"Prohibida: '{r_kw}'" if r_type == 'excluded_explicit' else "No tiene palabras requeridas"
+                        page_debug_info.append(f"  [❌ Descartada] {job_offer.title} | Motivo: {motivo}")
                     continue
 
                 if job_offer.job_id not in found_job_ids:
@@ -151,9 +177,22 @@ class GenericScraper(BaseScraper):
                     found_job_ids.add(job_offer.job_id)
                     processed_titles['included'].append(job_offer.title)
                     found_on_page += 1
+                    if debug_mode:
+                        page_debug_info.append(f"  [✨ NUEVA] {job_offer.title} | Empresa: {job_offer.company} | ID: {job_offer.job_id}")
+                else:
+                    if debug_mode:
+                        page_debug_info.append(f"  [🔄 Duplicada] {job_offer.title} | (Ya está en tu CSV)")
 
-            logger.info(f"[{self.platform_name.upper()}] Pág {page_num} completada. Nuevas: +{found_on_page}")
+            # Resumen de la página
+            logger.info(f"[{self.platform_name.upper()}] Pág {page_num} lista. Tarjetas HTML: {len(job_cards)} | Extraídas: {parsed_count} | Nuevas para CSV: +{found_on_page}")
             
+            # Si el debug está activo, imprimimos el reporte detallado
+            if debug_mode and page_debug_info:
+                logger.info(f"--- REPORTE DEBUG PÁG {page_num} ({self.platform_name.upper()}) ---")
+                for info in page_debug_info:
+                    logger.info(info)
+                logger.info("-" * 45)
+
             # --- DETECCIÓN VISUAL DE FIN DE PAGINACIÓN ---
             stop_present = sel_rules.get('stop_pagination_if_present')
             if stop_present and soup.select_one(stop_present):
@@ -161,7 +200,6 @@ class GenericScraper(BaseScraper):
                 
             stop_missing = sel_rules.get('stop_pagination_if_missing')
             if stop_missing:
-                # Buscamos el contenedor de forma segura (previniendo crasheos de librerías)
                 pagination_container_loaded = soup.find(class_=lambda x: x and any('pagination' in c.lower() or 'serp-page' in c.lower() for c in (x if isinstance(x, list) else [str(x)])))
                 if pagination_container_loaded and not soup.select_one(stop_missing):
                     break
@@ -175,16 +213,14 @@ class GenericScraper(BaseScraper):
             next_btn_sel = sel_rules.get('next_button_selector')
             
             if next_btn_sel:
-                # Paginación por Click (Recomendado para SPAs como LinkedIn)
                 try:
                     btn = self.driver.find_element(By.CSS_SELECTOR, next_btn_sel)
                     self.driver.execute_script("arguments[0].click();", btn)
                     time.sleep(self.p_cfg.get('delay_between_pages', 4))
-                    html = self._get_html_selenium(url=None) # No recargamos la URL, evaluamos la misma página
+                    html = self._get_html_selenium(url=None)
                 except Exception:
                     break
             else:
-                # Paginación Clásica por URL (Fallback)
                 if not pag_cfg: break
                 current_pag_val += pag_cfg.get('increment', 1)
                 url = f"{base_url}&{pag_cfg['param']}={current_pag_val}"

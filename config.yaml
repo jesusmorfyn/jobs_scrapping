@@ -101,7 +101,7 @@ platforms:
         selector: "span.font-base"
 
   indeed:
-    enabled: false
+    enabled: true
     base_url: "https://mx.indeed.com/jobs?q={keyword}&sc=0kf%3Aattr%28DSQF7%29%3B&fromage=7"
     pagination:
       param: "start"

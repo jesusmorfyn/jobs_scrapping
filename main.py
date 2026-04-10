@@ -14,24 +14,26 @@ from storage.csv_handler import CSVHandler
 
 from scrapers.generic import GenericScraper
 
+# Silenciar los logs molestos de reconexión de Selenium cuando matamos el contenedor
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
+logging.getLogger("selenium.webdriver.remote.remote_connection").setLevel(logging.ERROR)
+
 def scraper_worker(scraper_name, config, keywords, shared_job_ids, shared_results, shared_titles, data_lock):
     logger = logging.getLogger(__name__)
     container_manager = None
     driver = None
     
     try:
-        # 1. Levantar contenedor efímero exclusivo para este scraper
-        container_manager = SeleniumContainerManager(image_name=config['selenium']['image'])
+        # Aquí pasamos el scraper_name
+        container_manager = SeleniumContainerManager(scraper_name=scraper_name, image_name=config['selenium']['image'])
         command_executor_url = container_manager.start()
         
-        # 2. Conectar Selenium al contenedor
         driver = setup_driver(command_executor_url)
         if not driver:
             raise Exception("No se pudo conectar al driver remoto.")
 
         scraper = GenericScraper(config, scraper_name, driver)
 
-        # 3. Scrapear
         for kw in keywords:
             local_job_ids = set(shared_job_ids)
             jobs_encontrados, titulos_procesados = scraper.scrape_keyword(kw, local_job_ids)
@@ -45,9 +47,10 @@ def scraper_worker(scraper_name, config, keywords, shared_job_ids, shared_result
             time.sleep(config['timing']['delay_between_keywords'])
 
     except Exception as e:
-        logger.error(f"[{scraper_name.upper()}] Error crítico: {e}", exc_info=True)
+        # Solo imprimimos el error si NO fue porque apagamos el contenedor a la fuerza
+        if "Max retries exceeded" not in str(e) and "Connection refused" not in str(e):
+            logger.error(f"[{scraper_name.upper()}] Error crítico: {e}", exc_info=True)
     finally:
-        # 4. LIMPIEZA ABSOLUTA (Asegura que nada quede volando)
         if driver:
             try: driver.quit()
             except: pass
@@ -74,8 +77,8 @@ def main(config_path):
 
     logger.info(f"=== INICIANDO SCRAPING ({len(scrapers_activos)} hilos/contenedores) ===")
 
-    # LANZAR HILOS (Cada uno levantará su propio contenedor)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(scrapers_activos)) as executor:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(scrapers_activos))
+    try:
         futuros = []
         for name in scrapers_activos:
             futuros.append(executor.submit(
@@ -86,6 +89,12 @@ def main(config_path):
 
         for futuro in concurrent.futures.as_completed(futuros):
             futuro.result() 
+
+    except KeyboardInterrupt:
+        logger.warning("🛑 Interrupción por teclado (Ctrl+C) detectada. Apagando sistema...")
+        executor.shutdown(wait=False, cancel_futures=True)
+        # Aquí el script terminará y 'atexit' de docker_utils matará los contenedores de forma limpia.
+        return
 
     logger.info("=== TODOS LOS SCRAPERS TERMINARON ===")
     if shared_results:
