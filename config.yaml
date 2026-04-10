@@ -1,0 +1,199 @@
+# ==========================================
+# CONFIGURACIÓN GENERAL
+# ==========================================
+general:
+  output_filename: "ofertas_trabajo.csv"
+  final_columns_to_save:
+    - "job_id"
+    - "platform"
+    - "title"
+    - "company"
+    - "salary"
+    - "link"
+    - "timestamp_found"
+  headers:
+    # OCC usa 'requests' plano, por lo que es vital pasar un User-Agent de un navegador real
+    User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# ==========================================
+# CONFIGURACIÓN DE SELENIUM
+# ==========================================
+selenium:
+  # Si corres el script de forma normal en tu PC, usa: "127.0.0.1:9222"
+  # Si usas el DevContainer (Docker), usa: "host.docker.internal:9222"
+  debugger_address: "192.168.10.235:9223"
+
+# ==========================================
+# GESTIÓN DE TIEMPOS (Evitar baneos)
+# ==========================================
+timing:
+  delay_between_keywords: 5  # Segundos de pausa al terminar de buscar una palabra y pasar a la siguiente
+  retry_delay: 10            # Segundos a esperar si hay un error de Timeout (principalmente OCC)
+
+# ==========================================
+# PALABRAS CLAVE Y FILTROS
+# ==========================================
+search_filters:
+  search_keywords:
+    - cloud
+  
+  # Si pones palabras aquí, SOLO guardará las ofertas que tengan ALGUNA de estas palabras en el título. 
+  # Déjalo vacío "[]"" para no filtrar por inclusión estricta.
+  include_title_keywords: 
+    - aws
+    - gcp
+    - devops
+    - reliability
+    - kubernetes
+    - docker
+    - cloud
+    - platform
+    - gitlab
+  
+  # Si el título contiene ALGUNA de estas palabras, la oferta se descarta.
+  exclude_title_keywords:
+    - SAP
+    - data
+    - Salesforce
+    - Desarroll
+    - developer
+    - development
+    - Software
+    - data
+    - datos
+    - hybrid
+    - hibrid
+    - biling
+    - ingl
+    - english
+
+
+
+
+
+# # ==========================================
+# # CONFIGURACIÓN POR PLATAFORMA
+# # ==========================================
+# platforms:
+  
+#   occ:
+#     enabled: true
+#     base_url: "https://www.occ.com.mx/empleos/de-remoto/busqueda/?query={keyword}"
+#     time_param_name: "tm"
+#     default_time_param_value: "7"  # 7 = Últimos 7 días
+#     max_pages: 50                   # Máximo de páginas a scrapear por cada keyword
+#     request_timeout: 10            # Segundos que 'requests' espera la respuesta del servidor
+
+#   indeed:
+#     enabled: true
+#     # Nota: Asegúrate de que tu URL base de Indeed no contenga parámetros de paginación extraños.
+#     base_url: "https://mx.indeed.com/jobs?q={keyword}&sc=0kf%3Aattr%28DSQF7%29%3B" # Ese sc=... es el filtro de Trabajo Remoto
+#     time_param_name: "fromage"
+#     default_time_param_value: "7"  # Últimos 7 días
+#     max_pages: 50
+#     page_increment: 10             # Indeed pagina de 10 en 10 (start=0, start=10, start=20...)
+#     request_timeout_selenium: 15
+#     delay_between_pages_selenium: 5
+
+#   linkedin:
+#     enabled: true
+#     # f_WT=2 es el filtro interno de LinkedIn para "Remoto"
+#     base_url: "https://www.linkedin.com/jobs/search/?f_WT=2&keywords={keyword}&sortBy=DD"
+#     time_param_name: "f_TPR"
+#     default_time_param_value: "r604800" # r604800 = Última semana (es el tiempo en segundos)
+#     max_pages: 50
+#     page_increment: 25             # LinkedIn pagina de 25 en 25 (start=0, start=25, start=50...)
+#     request_timeout_selenium: 15
+#     delay_between_pages_selenium: 5
+  
+
+
+
+
+
+# ==========================================
+# CONFIGURACIÓN POR PLATAFORMA (100% Selenium)
+# ==========================================
+platforms:
+  occ:
+    enabled: true
+    base_url: "https://www.occ.com.mx/empleos/de-{keyword}/tipo-home-office-remoto?tm=7&sort=2"
+    pagination:
+      param: "page"
+      start: 1
+      increment: 1
+    max_pages: 50
+    delay_between_pages: 3
+    link_format: "https://www.occ.com.mx/empleo/oferta/{job_id}"
+    selenium_rules:
+      wait_for_selector: "div[id^='jobcard-']"
+      no_results_text: "0 resultados"
+      # En OCC, el botón no desaparece, solo se le añade la clase 'pointer-events-none'
+      stop_pagination_if_present: "li#btn-next-offer.pointer-events-none" 
+    selectors:
+      card: "div[id^='jobcard-']"
+      job_id: 
+        attribute: "id"
+        regex: "(\\d+)$"
+      title: 
+        selector: "h2.text-lg"
+      company: 
+        selector: "div.flex.flex-row.justify-between.items-center"
+        regex: "^([^\\s]+)"
+      salary: 
+        selector: "span.font-base"
+
+  indeed:
+    enabled: true
+    base_url: "https://mx.indeed.com/jobs?q={keyword}&sc=0kf%3Aattr%28DSQF7%29%3B&fromage=7"
+    pagination:
+      param: "start"
+      start: 0
+      increment: 10
+    max_pages: 50
+    delay_between_pages: 5
+    link_format: "https://mx.indeed.com/viewjob?jk={job_id}"
+    selenium_rules:
+      wait_for_selector: "#mosaic-provider-jobcards"
+      no_results_text: "did not match any jobs"
+      # En Indeed, el botón 'siguiente' literalmente desaparece del HTML en la última página
+      stop_pagination_if_missing: "a[data-testid='pagination-page-next']"
+    selectors:
+      card: "div.cardOutline"
+      job_id:
+        selector: "a[data-jk]"
+        attribute: "data-jk"
+      title:
+        selector: "a[data-jk] span[title], span[id^='jobTitle-']"
+      company:
+        selector: "span[data-testid='company-name']"
+      salary:
+        selector: "div[data-testid='salary-snippet-container']"
+
+  linkedin:
+    enabled: true
+    base_url: "https://www.linkedin.com/jobs/search/?f_WT=2&keywords={keyword}&sortBy=DD&f_TPR=r604800"
+    pagination:
+      param: "start"
+      start: 0
+      increment: 25
+    max_pages: 50
+    delay_between_pages: 5
+    link_format: "https://www.linkedin.com/jobs/view/{job_id}/"
+    selenium_rules:
+      wait_for_selector: "div.jobs-search-results-list, div[data-job-id]"
+      scroll_pane_selector: "div.jobs-search-results-list"
+      no_results_text: "No matching jobs found"
+      # En LinkedIn el botón 'Next' suele desaparecer al final, o estar desactivado.
+      stop_pagination_if_missing: "button.jobs-search-pagination__button--next"
+      stop_pagination_if_present: "button.jobs-search-pagination__button--next[disabled]"
+    selectors:
+      card: "div[data-job-id]"
+      job_id:
+        attribute: "data-job-id"
+      title:
+        selector: "a.job-card-list__title--link strong, a.job-card-list__title--link"
+      company:
+        selector: "div.artdeco-entity-lockup__subtitle"
+      salary:
+        selector: "NONE"

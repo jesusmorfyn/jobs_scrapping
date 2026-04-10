@@ -389,3 +389,5 @@ cython_debug/
 .pypirc
 
 cookies/
+ofertas_trabajo.csv
+README.md

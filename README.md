@@ -1,6 +1,6 @@
 # Documentación del Scraper Combinado de Empleos
 
-Este proyecto contiene un script de Python (`job_scraper.py`) diseñado para extraer ("scrapear") ofertas de empleo de varios portales, incluyendo OCC Mundial, Indeed y LinkedIn. El objetivo principal es recopilar información sobre trabajos (inicialmente remotos, pero configurable) en el área de tecnología (DevOps, Cloud, SRE, etc.) y almacenarla de forma centralizada.
+Este proyecto contiene un script de Python (`main.py`) diseñado para extraer ("scrapear") ofertas de empleo de varios portales, incluyendo OCC Mundial, Indeed y LinkedIn. El objetivo principal es recopilar información sobre trabajos (inicialmente remotos, pero configurable) en el área de tecnología (DevOps, Cloud, SRE, etc.) y almacenarla de forma centralizada.
 
 ## Requisitos Previos
 
@@ -13,7 +13,7 @@ Este proyecto contiene un script de Python (`job_scraper.py`) diseñado para ext
 Antes de ejecutar el script, necesitas instalar las librerías de Python requeridas.
 
 1.  Abre una terminal o línea de comandos.
-2.  Navega hasta el directorio donde se encuentra el script `job_scraper.py` y el archivo `requirements.txt`.
+2.  Navega hasta el directorio donde se encuentra el script `main.py` y el archivo `requirements.txt`.
 3.  Crea un archivo `requirements.txt` con el siguiente contenido (si aún no lo tienes):
     ```
     beautifulsoup4
@@ -91,16 +91,16 @@ La ejecución puede requerir un paso especial si se utilizan plataformas basadas
     *   Se abrirá una ventana de Chrome. **¡Déjala abierta!** El script la controlará.
     *   **Opcional:** Si usaste un perfil nuevo, la primera vez, inicia sesión en Google/LinkedIn si es necesario.
 
-2.  **Ejecutar el Script `job_scraper.py`:**
+2.  **Ejecutar el Script `main.py`:**
     *   Abre **otra** terminal.
-    *   Navega hasta el directorio donde está `job_scraper.py`.
+    *   Navega hasta el directorio donde está `main.py`.
     *   Ejecuta el script:
         ```bash
         # Usando el config.yaml por defecto
-        python job_scraper.py
+        python main.py
         
         # Especificando un archivo de configuración diferente
-        python job_scraper.py --config mi_otra_config.yaml
+        python main.py --config mi_otra_config.yaml
         ```
     *   El script cargará la configuración, intentará conectarse a Chrome si es necesario, e iterará por cada `keyword`.
     *   **Interacción Manual (Opcional para Selenium):** Mientras el script controla Chrome, mover el ratón o hacer scroll puede ayudar a evitar la detección de bots.
@@ -151,3 +151,39 @@ La ejecución puede requerir un paso especial si se utilizan plataformas basadas
 *   El web scraping es sensible a cambios en la estructura HTML de los sitios. Se requiere mantenimiento.
 *   Usa los delays de forma responsable para evitar sobrecargar los servidores.
 *   Ajusta los filtros en `config.yaml` para obtener resultados relevantes.
+
+
+
+netsh interface portproxy add v4tov4 listenport=9223 listenaddress=0.0.0.0 connectport=9222 connectaddress=127.0.0.1
+
+netsh interface portproxy delete v4tov4 listenport=9223 listenaddress=0.0.0.0
+
+New-NetFirewallRule -DisplayName "Chrome Debugging WSL" -Direction Inbound -LocalPort 9223 -Protocol TCP -Action Allow
+
+Remove-NetFirewallRule -DisplayName "Chrome Debugging WSL"
+
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\Users\jesus\chrome_dev_profile"
+
+curl http://127.0.0.1:9223/json/version
+{
+   "Browser": "Chrome/146.0.7680.178",
+   "Protocol-Version": "1.3",
+   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+   "V8-Version": "14.6.202.31",
+   "WebKit-Version": "537.36 (@19ad7ae2ac645174d8fbf01dfde5f19a6c54f641)",
+   "webSocketDebuggerUrl": "ws://127.0.0.1:9223/devtools/browser/fa27392b-c934-4eea-ad6f-4675e481501f"
+
+}
+
+
+
+find . -type f \
+    -not -path "*/venv/*" \
+    -not -path "*/cookies/*" \
+    -not -path "*/__pycache__/*" \
+    -not -path "*/.git/*" \
+    -not -name "README.md" \
+    -not -name "proyecto_completo.txt" \
+    -not -name ".gitignore" \
+    -not -name "*.csv" \
+    -exec sh -c 'echo "\n--- ARCHIVO: $1 ---"; cat "$1"' _ {} \; > proyecto_completo.txt

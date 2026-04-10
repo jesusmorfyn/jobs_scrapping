@@ -36,7 +36,10 @@ class CSVHandler:
         combined_df = combined_df[combined_df['job_id'] != 'None']
         combined_df.drop_duplicates(subset=['job_id'], keep='first', inplace=True)
         
-        # Asegurar que todas las columnas existan
+        # Limpieza agresiva de caracteres basura en los links para evitar las triples comillas
+        if 'link' in combined_df.columns:
+            combined_df['link'] = "\"" + combined_df['link'].astype(str).str.replace('"', '').str.strip() + "\""
+
         for col in self.columns:
             if col not in combined_df.columns: 
                 combined_df[col] = pd.NA
